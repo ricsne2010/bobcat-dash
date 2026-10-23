@@ -1,0 +1,13 @@
+#!/bin/sh
+# Bobcat dash: tell the breakout board (rev 2.0) to cut the power.
+#
+# Install:  sudo install -m 755 tools/bobcat-dash-poweroff /usr/lib/systemd/system-shutdown/
+#
+# systemd runs everything in that folder as the very last step of shutdown, after all
+# disks are unmounted or read-only, so cutting the power here can't damage anything.
+# It raises KILL (GPIO 16): the board cuts the 12 V feed for a few seconds. If the key is
+# already back on by then, the Pi simply starts up again.
+case "$1" in
+    poweroff|halt) /usr/bin/pinctrl set 16 op dh ;;
+esac
+exit 0

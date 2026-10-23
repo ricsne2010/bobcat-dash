@@ -1,0 +1,240 @@
+# Bobcat dash configuration.
+# After editing on the Pi:  sudo systemctl restart bobcat-dash
+
+[display]
+width = 0                 # 0 = use the screen's native resolution
+height = 0
+fullscreen = true
+fps = 20
+lamp_test_seconds = 2.0   # all warning tiles flash red at startup, like a bulb check
+
+[splash]                  # start-up picture, then it fades into the dash
+enabled = true
+file = "splash/splash.png"  # make it with: python3 tools/fit_splash.py my_picture.jpg --size 1024x768
+seconds = 3.0             # how long the picture stays up once the dash has started
+fade_seconds = 0.6
+fit = "contain"           # contain = whole picture visible, cover = fill the screen (trims edges)
+background = "auto"       # border colour around a "contain" picture: "auto" (from its edges) or "#000000"
+caption = "Bobcat Custom Display"   # shown under the picture with the version and build date; "" = no caption
+sim_boot_seconds = 3.0    # simulator only: extra time on the picture, standing in for the Pi booting
+
+[audio]                   # speaker: startup chime + in-cab alert tones
+speaker = true
+volume = 0.8              # 0.0 - 1.0
+# WAV files, relative to this folder. Replace them with any WAV you like
+# (16-bit PCM is safest). Make a looping alarm file end in silence for a gap between repeats.
+startup_file = "sounds/startup.wav"   # plays once when the system is ready
+alarm_file = "sounds/alarm.wav"       # loops while a red alarm is active
+warning_file = "sounds/warning.wav"   # plays once for a new amber warning
+nosignal_file = "sounds/nosignal.wav" # plays once when a sensor stops answering (grey NO SIGNAL)
+keyoff_file = "sounds/keyoff.wav"     # plays when the key is turned off (the dash is about to shut down)
+keyoff_chime = true
+warning_beep = true       # one short beep when an amber warning has lasted warn_delay seconds
+warn_delay = 3.0
+nosignal_sound = true     # "connection lost" sound for a broken sensor wire / unplugged sender
+nosignal_delay = 2.0      # seconds a sensor must stay NO SIGNAL before the sound plays
+
+[horn]                    # external 12 V alarm, switched by a MOSFET or relay
+enabled = true
+gpio = 27
+active_high = true
+pulse_on = 0.5            # seconds on / off. A pulsing alarm is easier to notice than a steady one.
+pulse_off = 0.5
+test_on_startup = true    # short chirp during the lamp test, so you know the horn works
+# Red alarms that sound the horn. Anything else that goes red (e.g. low fuel)
+# only plays the alert tone on the speaker.
+sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts"]
+
+[silence_button]          # momentary push button to ground
+gpio = 5
+
+[power]                   # key-off shutdown (breakout board rev 2.0 power-hold circuit)
+# The board keeps the Pi powered after key-off. The dash saves the hours and shuts the Pi
+# down cleanly, then the board cuts the power. Set enabled = false without that circuit.
+enabled = true
+key_gpio = 6              # key switch through an optocoupler: low = key on
+keyoff_delay_s = 5.0      # key must stay off this long; turning it back on sooner cancels
+# HOLD (GPIO 26) and KILL (GPIO 16) are set outside this program: see README "Key-off shutdown".
+shutdown_command = ["sudo", "-n", "/usr/bin/systemctl", "poweroff"]
+
+[lights]                  # light switch sensing (breakout board rev 2.1): tell-tales on the dash
+# Each input is a sense wire from the LAMP side of a light switch, through an optocoupler:
+# GPIO low = that light is on. Lights wired through the key (via a relay) go off at key-off;
+# if any is still on when the key is turned off, the dash warns (relay stuck, wired to the battery).
+enabled = true
+left_on_warning = true    # chime + "LIGHTS STILL ON" during the key-off countdown
+# How the dash shows the lights:
+#   "tiles" = three big FRONT / REAR / WORK tiles under the warning tiles (which go to half height),
+#             always on screen: dark = off, lit = on. Easy to read on a small (7") screen.
+#   "icons" = small symbols in the top-right corner of the RPM panel, only while a light is on
+#             (the original layout).
+display = "tiles"
+debounce = 0.2            # seconds a switch must hold a new position before it shows
+
+[lights.front]
+label = "FRONT"
+gpio = 25                 # board J11 pin 1
+
+[lights.rear]
+label = "REAR"
+gpio = 12                 # board J11 pin 2
+
+[lights.work]
+label = "WORK"
+gpio = 13                 # board J11 pin 3
+
+[pi_health]               # the Pi's own warnings, shown in the header (amber, one beep)
+enabled = true
+temp_warn = 80.0          # PI HOT at or above this CPU temperature (C). The Pi slows itself down at 80-85 C.
+check_every = 2.0         # seconds between readings
+low_5v_hold = 10.0        # LOW 5V stays up this long after each supply dip, so a short sag is still seen
+
+[sim]                     # simulator only
+crank_seconds = 2.5       # how long the starter cranks before the VH4D catches (C = cold engine: longer)
+crank_volts = 10.2        # battery voltage while cranking
+
+[hourmeter]               # engine hour (Hobbs) meter, counts while the engine runs
+data_dir = "~/bobcat-dash-data"   # must be on a normal writable disk, NOT the read-only overlay
+# Saved at every engine stop and key-off. This periodic save only matters if the power is
+# lost unexpectedly (a blown fuse, battery disconnected with the engine running).
+save_every_s = 15
+# initial_hours is used ONLY if no saved total exists yet (first run). Changing it later does
+# nothing. To change the total afterwards:  python3 dash.py --set-hours 1234.5
+initial_hours = 0.0
+
+[adc]                     # ADS1115 on I2C bus 1, ADDR pin to GND
+i2c_bus = 1
+address = 0x48
+
+[voltage]
+adc_channel = 0
+# (R1 + R2) / R2 for the divider. 47k over 10k = 5.7.
+# To fine-tune: measure the battery with a meter and set this to meter_volts / adc_volts.
+divider_ratio = 5.7
+smoothing = 0.2
+# At or above this the battery is being charged, by the alternator or a battery
+# charger. If the tach reads 0 at the same time, the oil pressure switch decides:
+# no pressure = parked on a charger; pressure = engine running, tach sensor dead.
+charging_min = 13.2
+# Starting: while cranking the starter pulls the battery down to ~10 V. The battery shows CRANKING (amber,
+# no alarm), or WEAK CRANK below crank_low: a tired battery or a bad cable. For start_grace seconds after
+# the engine catches, a low reading shows STARTING UP instead of NOT CHARGING (the 10SI is coming up).
+crank_low = 9.6
+crank_detect = 1.5        # a sudden sag this long before the tach sees cranking still counts as a start
+crank_recover = 2.0       # after letting go of the key without a start: RECOVERING, not LOW, this long
+start_grace = 10.0
+bar_min = 10.0
+bar_max = 16.0
+
+# Two sets of limits. The status and the colour bar switch between them
+# automatically with the engine state.
+#   green = amber_low .. amber_high
+#   amber = red_low .. amber_low  and  amber_high .. red_high
+#   red   = below red_low  or  above red_high
+
+[voltage.engine_off]      # resting battery: 12.6 full, 12.2 half, 11.8 flat
+red_low = 11.8
+amber_low = 12.2
+# A charger or maintainer on a parked machine holds 13.2-14.8 V, so the high
+# limits match the running ones: normal charging stays green, overcharging doesn't.
+amber_high = 14.8
+red_high = 15.5
+
+[voltage.engine_running]  # alternator should hold 13.5-14.5
+red_low = 12.0            # battery draining fast
+amber_low = 13.2          # below this = "NOT CHARGING"
+amber_high = 14.8
+red_high = 15.5           # regulator failure, overcharging
+
+[fuel]
+adc_channel = 1
+smoothing = 0.02          # heavy smoothing because fuel sloshes around
+# Calibration table: [ADC volts, percent full]. Run  python3 dash.py --calibrate
+# with the tank at empty, half and full, then write the readings here. Order doesn't matter.
+table = [[0.30, 0], [1.10, 50], [2.20, 100]]
+fault_margin = 0.25       # this far past either end of the table = broken sender -> "NO SIGNAL"
+amber_below = 25
+red_below = 12
+
+[tach]
+gpio = 17
+# This machine: Wisconsin VH4D 4-cylinder, PerTronix electronic distributor, Flame-Thrower 40611 coil.
+# The tach reads the coil NEGATIVE terminal on the breakout board's COIL plug (left edge, rev 2.4):
+# one pulse per spark, and a 4-cylinder four-stroke fires twice per crank revolution = 2.0.
+# (A Hall sensor + 1 magnet on the crank pulley on the "SIG" pin would be 1.0.)
+pulses_per_rev = 2.0
+min_pulse_gap_ms = 3.0    # ignore the coil's ringing right after each spark (use 0 for a Hall sensor)
+# Bobcat M700 with a Wisconsin VH4D and a manual (hand) throttle. The lever sets the governor's target;
+# the governor holds it. VH4D: rated 30 hp at 2800 rpm, governed to 2800 under full load, ~2950 with no load,
+# idle ~1000. Check yours with a handheld tach (high idle with no load) and adjust governed_rpm,
+# then keep amber_above about 100 rpm above it, so normal full throttle stays green.
+max_rpm = 3500            # top of the dial
+idle_rpm = 1000           # low idle
+governed_rpm = 2950       # full throttle, no load (high idle)
+amber_above = 3050        # above governed speed: the governor is starting to lose control
+red_above = 3200          # ~10 % over governed: overspeed, horn
+running_rpm = 600         # above this the engine counts as running (cranking is ~200-300)
+cranking_rpm = 80         # between this and running_rpm = the starter is cranking it (battery dip expected)
+crank_limit = 10.0        # seconds of continuous cranking before REST STARTER (beeps at once, then every 5 s)
+crank_rest = 30.0         # then STARTER COOLING counts this down after you let go (30-60 s is typical)
+# LOW IDLE (amber, one beep): running but below low_idle_below for low_idle_seconds. A sagging idle is
+# the usual sign of a coming stall (fuel starving, choke, plugged filter, carb icing). Ignored for the
+# first low_idle_after_start seconds after start-up. Set low_idle_below = 0 to turn it off.
+low_idle_below = 800
+low_idle_seconds = 1.0
+low_idle_after_start = 5.0
+smoothing = 0.3
+
+[cooldown]                # cool-down reminder (information only: no sound, not a warning)
+# The VH4D is air-cooled: after hard work, idle it a few minutes before shutting off.
+# After hard_minutes (in total) at or above hard_rpm, bringing the throttle back to idle starts a
+# countdown on the RPM panel: "COOL DOWN 2:40", then "OK TO SHUT DOWN". Revving up restarts it.
+enabled = true
+hard_rpm = 2000           # at or above this counts as hard work
+hard_minutes = 5.0        # this much hard work makes a cool-down due
+idle_max_rpm = 1300       # at or below this counts as idling (the manual says 1000-1200)
+cool_minutes = 3.0        # idle this long (the manual says 3-5 minutes)
+done_seconds = 60         # how long "OK TO SHUT DOWN" stays up
+
+# Warning switches. Add or remove [warnings.*] sections and the screen adjusts.
+# Plain switch on a GPIO through an optocoupler: set gpio (and active_low).
+# Monitored switch with an end-of-line resistor: set adc_channel instead (see below).
+# active_low = true: the optocoupler pulls the pin to ground when the switch closes.
+[warnings.oil_pressure]
+label = "ENGINE OIL\nPRESSURE"
+gpio = 22
+active_low = true
+ok_text = "OK"
+alarm_text = "LOW"
+ignore_when_engine_off = true   # the oil switch is always closed with the engine stopped
+start_delay = 5.0               # seconds after start-up for oil pressure to build before it can alarm
+on_delay = 0.5
+off_delay = 1.0
+
+# Filter and temp switches are "monitored": a 4.7k resistor across each switch, at
+# the switch, lets the dash tell three states apart on an ADC input:
+#   ~0 V = switch closed (alarm)   ~1.65 V = switch open, wiring OK   3.3 V = wire broken (NO SIGNAL)
+# Nothing else may connect to these switches: any 12 V on the wire reads as "broken".
+[warnings.hyd_filter]
+label = "HYDRAULIC\nFILTER"
+adc_channel = 2           # ADS1115 A2
+active_below = 0.8        # volts: below this the switch is closed
+open_above = 2.6          # volts: above this the wire is broken -> NO SIGNAL
+led_gpio = 23             # board status LED: on = active, blinking = wire fault
+ok_text = "OK"
+alarm_text = "BYPASS"
+on_delay = 1.0
+off_delay = 2.0
+fault_delay = 1.0         # a wire fault must last this long before it shows
+
+[warnings.hyd_temp]
+label = "HYDRAULIC\nOIL TEMP"
+adc_channel = 3           # ADS1115 A3
+active_below = 0.8
+open_above = 2.6
+led_gpio = 24
+ok_text = "OK"
+alarm_text = "HOT"
+on_delay = 1.0
+off_delay = 2.0
+fault_delay = 1.0

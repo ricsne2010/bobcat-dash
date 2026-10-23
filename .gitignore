@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# KiCad: automatic backups, per-user view settings, lock and cache files
+breakout-board/kicad/*-backups/
+*.kicad_prl
+*.lck
+fp-info-cache
+
+# board generator scratch output (build.sh writes here; the results are copied to kicad/ and fab/)
+breakout-board/generator/out/
+breakout-board/generator/drc.json
+breakout-board/generator/route.dsn
+breakout-board/generator/route.ses
+breakout-board/generator/*.kicad_sch
+
+# diagram scripts: temporary PNGs (the published diagrams are the .jpg files at the top level)
+tools/diagrams/*.png

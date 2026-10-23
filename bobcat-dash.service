@@ -1,0 +1,16 @@
+[Unit]
+Description=Bobcat digital dash
+After=multi-user.target
+
+[Service]
+# Change "pi" to your username if you picked a different one when flashing the SD card.
+User=pi
+SupplementaryGroups=video render input gpio i2c audio
+WorkingDirectory=/home/pi/bobcat-dash
+ExecStart=/usr/bin/python3 /home/pi/bobcat-dash/dash.py
+Environment=SDL_VIDEODRIVER=kmsdrm
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
