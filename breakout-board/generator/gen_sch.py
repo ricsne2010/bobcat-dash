@@ -643,6 +643,37 @@ def blk_tilt(ox, oy):
     text("1 GND   2 3V3   3 SDA   4 SCL  (cable soldered to the sensor board)", ox + 2.54, oy + 46.0, 1.27)
 
 
+def blk_temp(ox, oy):
+    box(ox, oy, ox + 88, oy + 50, "TEMPERATURE (rev 2.7)",
+        "1-Wire on GPIO 4. U11 measures the breakout box's air; J14 takes external DS18B20 probes (cab, outside). "
+        "Several probes can share J14.")
+    ux, uy = ox + 15.24, oy + 27.94
+    place("U11", ux, uy, ref_at=(-8.89, -1.27, "right"), val_at=(-8.89, 1.27, "right"))
+    pwr("+3V3", pin("U11", 3))
+    pwr("GND", pin("U11", 1))
+    dq = pin("U11", 2)
+    n1, n2 = (ux + 12.7, uy), (ux + 20.32, uy)
+    W(dq, n1, n2)
+    place("R86", n1[0], uy - 3.81, 180)
+    pwr("+3V3", pin("R86", 2))
+    W(n2, (n2[0], uy + 5.08))
+    gl("W1_DQ", (n2[0], uy + 5.08), 270)
+    place("R87", ux + 29.21, uy, 90, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
+    W(n2, pin("R87", 1))
+    jx = ux + 45.72
+    place("J14", jx, uy, ref_at=(2.54, -6.35, None), val_at=(2.54, 6.35, None))
+    W(pin("R87", 2), pin("J14", 2))
+    g = pin("J14", 1)
+    W(g, (g[0] - 1.27, g[1]))
+    pwr("GND", (g[0] - 1.27, g[1]), side="left")
+    p3 = pin("J14", 3)
+    m = p3[0] - 3.81
+    W(p3, (m, p3[1]), (m, uy + 7.62))
+    place("R88", m - 3.81, uy + 7.62, 90, ref_at=(0, 2.54, None), val_at=(0, 4.8, None))
+    pwr("+3V3", pin("R88", 1), side="left")
+    text("J14: 1 GND   2 DQ   3 3V3", ox + 2.54, oy + 46.0, 1.27)
+
+
 def blk_testpoints(ox, oy):
     box(ox, oy, ox + 212, oy + 34, "TEST POINTS", "Same labels as the board silkscreen.")
     tps = [p for p in PARTS if p["group"] == "tp"]
@@ -688,6 +719,7 @@ blk_lights(177.8, 200.66)
 blk_testpoints(177.8, 261.62)
 blk_mech(393.7, 261.62)
 blk_tilt(177.8, 299.72)
+blk_temp(274.32, 299.72)
 blk_pi(434.34, 12.7)
 blk_modules(434.34, 90.17)
 blk_horn(434.34, 200.66)
@@ -841,7 +873,7 @@ for a, b in segs:
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
        [Sym("title_block"), [Sym("title"), "Bobcat Digital Dash - Breakout Board"], [Sym("date"), "2026-10-22"],
-        [Sym("rev"), "2.6"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
+        [Sym("rev"), "2.7"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \
       [[Sym("sheet_instances"), [Sym("path"), "/", [Sym("page"), "1"]]], [Sym("embedded_fonts"), Sym("no")]]

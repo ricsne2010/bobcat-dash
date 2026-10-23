@@ -52,7 +52,7 @@ SECTIONS = [
   (1, "Rectifier diode (optional)", "1N4007", "1N4007", "Sch. 6", "Only with a coil horn or relay"),
  ]),
  ("BREAKOUT BOARD rev 2.4 (replaces the perfboard; key-off shutdown, light sensing, coil tach in its own HV corner)", [
-  (1, "Bare PCB", "150 × 134 mm, 2 layers, 1.6 mm, 1 oz", "breakout-board/fab gerbers zip", "Board README", "Most board makers sell a minimum of 5. Has the Project Moon Pi logo on the back"),
+  (1, "Bare PCB", "162 × 134 mm (rev 2.7), 2 layers, 1.6 mm, 1 oz", "breakout-board/fab gerbers zip", "Board README", "Most board makers sell a minimum of 5. Has the Project Moon Pi logo on the back"),
   (1, "Board components kit", "Everything in breakout-board/fab/board-bom.csv", "—", "Board README", "Includes the resistors, diodes, optos and MOSFET listed above, plus the power-hold parts (IRF4905, CD4060, BC547 ×2)"),
   (1, "Pluggable terminal plugs", "5.08 mm: 5× 2-pin, 3× 3-pin, 1× 4-pin", "Phoenix MSTB 2,5/x-ST-5,08", "Board README", "Mate with the board's MSTBA headers"),
   (1, "40-pin IDC ribbon cable", "Female–female, 15–30 cm", "—", "Board README", "Pi GPIO to board J1, pin 1 to pin 1"),
@@ -73,6 +73,11 @@ SECTIONS = [
   (1, "Micro-Fit 3.0 receptacle housing", "4-position, single row, latching", "Molex 43645-0400", "Board README: TILT", "Plugs into the board's TILT header J13 (43650-0415)"),
   (4, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "Board README: TILT", "Crimp tool for Micro-Fit, or buy pre-crimped Micro-Fit leads"),
   (1, "Sensor cable", "22-24 AWG, 4-core, shielded if possible, under ~30-50 cm", "—", "README: Machine angle", "Your 14/16 AWG harness wire won't fit the Micro-Fit pins or the sensor board. Solder this end into the sensor board; shield to GND at the board end only"),
+ ]),
+ ("TEMPERATURE: README, Temperatures", [
+  (2, "Waterproof temperature probe", "DS18B20 in a stainless tip, 3-wire cable (red 3V3, black GND, yellow/white data)", "—", "README: Temperatures", "One for the cab, one for outside air (shade it from sun and engine heat). Optional: the board measures the box itself"),
+  (1, "Micro-Fit 3.0 receptacle housing", "3-position, single row, latching", "Molex 43645-0300", "Board README: TEMP PROBE", "Plugs into the board's TEMP PROBE header J14 (43650-0315)"),
+  (3, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "Board README: TEMP PROBE", "Two probes: join their 3 wires in the cable (each wire to the same pin)"),
  ]),
  ("CHARGING: Delco 10SI 3-wire alternator (wiring-schematic.jpg, section 7)", [
   (1, "Rectifier diode", "1N4001, 1 A 50 V", "1N4001", "Sch. 7", "In the terminal 1 (excite) wire, band toward the alternator: stops the running alternator back-feeding the key circuit (engine run-on, dash never sees key-off)"),

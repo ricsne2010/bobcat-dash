@@ -37,7 +37,7 @@ C = lambda ref, val, a, b, grp, desc="": part(ref, "Device:C", val, FP_C, {1: a,
 TP = lambda ref, net, grp: part(ref, "Connector:TestPoint", net, FP_TP_GND if net == "GND" else FP_TP, {1: net}, grp, "test point")
 
 # ---------------------------------------------------------------- Pi ribbon header (physical pin numbers)
-PI = {1: "+3V3", 2: "+5V", 3: "SDA", 4: "+5V", 5: "SCL", 6: "GND", 9: "GND", 11: "TACH_GPIO",
+PI = {1: "+3V3", 2: "+5V", 3: "SDA", 4: "+5V", 5: "SCL", 6: "GND", 7: "W1_DQ", 9: "GND", 11: "TACH_GPIO",
       12: "I2S_BCLK", 13: "HORN_GPIO", 14: "GND", 15: "OIL_GPIO", 16: "FILT_LED", 17: "+3V3",
       18: "TEMP_LED", 20: "GND", 22: "LT_FRONT_GPIO", 25: "GND", 29: "BTN_GPIO", 30: "GND", 31: "KEY_GPIO",
       32: "LT_REAR_GPIO", 33: "LT_WORK_GPIO", 34: "GND", 35: "I2S_LRC",
@@ -230,6 +230,21 @@ part("J13", "Connector_Generic:Conn_01x04", "TILT", "Connector_Molex:Molex_Micro
 R("R83", "100", "SDA", "TILT_SDA", "tilt", "SDA series protection")
 R("R84", "100", "SCL", "TILT_SCL", "tilt", "SCL series protection")
 R("R85", "47", "+3V3", "TILT_3V3", "tilt", "Sensor supply: limits a shorted cable to ~70 mA")
+
+# ---------------------------------------------------------------- temperature (rev 2.7)
+# 1-Wire bus on GPIO 4 (Pi pin 7, the Pi's standard 1-Wire pin: dtoverlay=w1-gpio). DS18B20s, +-0.5 C, -55..125 C.
+#  * U11 on the board: the breakout box's air temperature (BOX HOT warnings).
+#  * J14: latching 3-pin connector for external waterproof DS18B20 probes (cab, outside air). Several probes
+#    can share it (each has its own ID). 100R in the probe's data line and 47R in its 3.3 V feed protect the
+#    Pi and its 3.3 V rail from a damaged probe cable, as on the TILT connector.
+part("U11", "Sensor_Temperature:DS18B20", "DS18B20", "Package_TO_SOT_THT:TO-92_Inline_Wide",
+     {1: "GND", 2: "W1_DQ", 3: "+3V3"}, "temp", "Board / box air temperature (1-Wire)")
+R("R86", "4.7k", "W1_DQ", "+3V3", "temp", "1-Wire pull-up")
+part("J14", "Connector_Generic:Conn_01x03", "TEMP PROBE", "Connector_Molex:Molex_Micro-Fit_3.0_43650-0315_1x03_P3.00mm_Vertical",
+     {1: "GND", 2: "PROBE_DQ", 3: "PROBE_3V3"}, "temp",
+     "Molex Micro-Fit 3.0 43650-0315 (latching): external DS18B20 probes: 1 GND, 2 DQ, 3 3V3. Housing 43645-0300")
+R("R87", "100", "W1_DQ", "PROBE_DQ", "temp", "Probe data series protection")
+R("R88", "47", "+3V3", "PROBE_3V3", "temp", "Probe supply: limits a shorted probe cable")
 
 # ---------------------------------------------------------------- test points
 TPS = ["+12V_IN", "+12V", "+12V_HORN", "+5V", "+3V3", "GND", "GND", "GND", "BATT_ADC", "FUEL_ADC",

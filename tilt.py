@@ -86,24 +86,53 @@ class ComplementaryFilter:
         return self.roll, self.pitch
 
 
-class TiltSensor:
-    """Hardware reader. .angles() -> (roll, pitch) in degrees, or None if there's no sensor answering."""
+class SensorFault(Exception):
+    """The sensor answered, but what it says can't be a real reading."""
 
-    def __init__(self, cfg):
+
+class TiltSensor:
+    """Hardware reader. .angles() -> (roll, pitch) in degrees, or None (shown as NO SIGNAL).
+
+    It never guesses: anything doubtful gives None, never a made-up "level".
+      * Not there at start-up, or plugged in later: it tries again every 2 s and picks the sensor up.
+      * Unplugged, or a broken wire: after 10 failed reads in a row (or 1 s with no good reading): None.
+      * Plugged back in / power blip: the chip restarts powered down and would read all zeros. That's caught
+        (all-zero readings, gravity far from 1 g, or its settings gone, checked every second), and the
+        chip is set up again and re-averaged for a second before any angle is shown.
+      * A single glitchy read is ignored (the last good angle stands for up to 1 s).
+    """
+
+    RETRY = 2.0                 # seconds between attempts to set the chip up
+    CHECK = 1.0                 # seconds between checks that the chip still has its settings
+    MAX_ERRORS = 10             # failed reads in a row before it counts as gone
+    G_LOW, G_HIGH = 0.6, 1.4    # averaged gravity outside this = not a real reading
+
+    def __init__(self, cfg, bus=None, start=True, clock=time.monotonic):
         tc = cfg.get("tilt", {})
         self.enabled = tc.get("enabled", True)
         self.bus_n = cfg.get("adc", {}).get("i2c_bus", 1)
         self.address = tc.get("address", 0x6A)
         self.axes = tc.get("axes", "x_forward")          # x_forward | y_forward | x_back | y_back
         self.flip = tc.get("upside_down", False)
-        self.filter = ComplementaryFilter(tc.get("filter_seconds", 3.0))
+        self.filter_s = tc.get("filter_seconds", 3.0)
+        self.filter = ComplementaryFilter(self.filter_s)
         self.offsets, self.gyro_bias = self._load_offsets(cfg)
         self._gyro_sum, self._gyro_n = [0.0, 0.0, 0.0], 0
+        self._bus = bus
+        self.clock = clock
+        self.ready = False          # chip found and set up
+        self.fault = "not started"  # why there's no reading (None when reading)
+        self._next_setup = 0.0
+        self._next_check = 0.0
+        self._errors = 0
+        self._g = None              # averaged gravity magnitude
+        self._t = None
         self._latest = None
-        self._last_ok = 0.0
+        self._last_ok = -1e9
+        self._logged = None
         self._lock = threading.Lock()
         self._stop = threading.Event()
-        if self.enabled:
+        if self.enabled and start:
             threading.Thread(target=self._run, name="tilt", daemon=True).start()
 
     @staticmethod
@@ -122,45 +151,97 @@ class TiltSensor:
         return {"x_forward": (x, y, z), "x_back": (-x, -y, z),
                 "y_forward": (y, -x, z), "y_back": (-y, x, z)}[self.axes]
 
-    def _run(self):
+    # -- state changes
+    def _no_reading(self, reason, now, retry_in):
+        self.ready = False
+        self.fault = reason
+        self._next_setup = now + retry_in
+        with self._lock:
+            self._latest = None
+        if reason != self._logged:              # log each new kind of problem once, not 100 times a second
+            log.warning("tilt sensor: %s; angle panel shows NO SIGNAL until it reads properly again", reason)
+            self._logged = reason
+
+    def _setup(self, now):
         try:
-            from smbus2 import SMBus
-            bus = SMBus(self.bus_n)
-            who = bus.read_byte_data(self.address, WHO_AM_I)
+            if self._bus is None:
+                from smbus2 import SMBus
+                self._bus = SMBus(self.bus_n)
+            who = self._bus.read_byte_data(self.address, WHO_AM_I)
             if who not in IDS:
-                raise OSError(f"unexpected chip id 0x{who:02x} at 0x{self.address:02x}")
-            bus.write_byte_data(self.address, CTRL1_XL, 0x48)     # accel 104 Hz, +-4 g
-            bus.write_byte_data(self.address, CTRL2_G, 0x40)      # gyro 104 Hz, +-250 deg/s
-            log.info("tilt sensor %s at 0x%02x", IDS[who], self.address)
-        except Exception as e:
-            log.warning("no tilt sensor (%s): the angle panel shows NO SIGNAL", e)
+                raise SensorFault(f"unexpected chip id 0x{who:02x} at 0x{self.address:02x}")
+            self._bus.write_byte_data(self.address, CTRL1_XL, 0x48)     # accel 104 Hz, +-4 g
+            self._bus.write_byte_data(self.address, CTRL2_G, 0x40)      # gyro 104 Hz, +-250 deg/s
+        except ImportError as e:
+            self._no_reading(f"no I2C support ({e})", now, self.RETRY)
             return
-        t = time.monotonic()
+        except (OSError, SensorFault) as e:
+            self._no_reading(f"not answering at 0x{self.address:02x} ({e})", now, self.RETRY)
+            return
+        # a fresh start: re-average from scratch, never carry an old angle across a fault
+        self.filter = ComplementaryFilter(self.filter_s)
+        self.ready, self.fault, self._errors, self._g, self._t = True, None, 0, None, None
+        self._next_check = now + self.CHECK
+        if self._logged is None or self._logged.startswith("not answering") or self._logged.startswith("no I2C"):
+            log.info("tilt sensor %s ready at 0x%02x", IDS[who], self.address)
+
+    def step(self, now):
+        """One reading (the thread calls this ~100 times a second; tests call it with a fake clock)."""
+        if not self.ready:
+            if now >= self._next_setup:
+                self._setup(now)
+            return
+        try:
+            if now >= self._next_check:
+                self._next_check = now + self.CHECK
+                if self._bus.read_byte_data(self.address, CTRL1_XL) != 0x48:
+                    raise SensorFault("chip lost its settings (power interrupted?)")
+            raw = self._bus.read_i2c_block_data(self.address, OUTX_L_G, 12)
+        except SensorFault as e:
+            self._no_reading(str(e), now, 0.2)
+            return
+        except OSError as e:
+            self._errors += 1
+            if self._errors >= self.MAX_ERRORS:
+                self._no_reading(f"not answering ({e})", now, self.RETRY)
+            return
+        self._errors = 0
+        v = [int.from_bytes(bytes(raw[i:i + 2]), "little", signed=True) for i in range(0, 12, 2)]
+        if not any(v[3:]):
+            self._no_reading("accelerometer reads all zeros (restarted or powered down)", now, 0.2)
+            return
+        g_raw = self._orient(*(n * GYRO_DPS_PER_LSB for n in v[:3]))
+        accel = self._orient(*(n * ACCEL_G_PER_LSB for n in v[3:]))
+        mag = math.sqrt(sum(a * a for a in accel))
+        self._g = mag if self._g is None else 0.98 * self._g + 0.02 * mag      # ~0.5 s average: bumps pass
+        if not self.G_LOW < self._g < self.G_HIGH:
+            self._no_reading("gravity reading far from 1 g (faulty sensor)", now, 0.2)
+            return
+        with self._lock:
+            self._gyro_sum = [a + b for a, b in zip(self._gyro_sum, g_raw)]
+            self._gyro_n += 1
+        gyro = tuple(a - b for a, b in zip(g_raw, self.gyro_bias))
+        dt = 0.01 if self._t is None else min(0.05, now - self._t)
+        self._t = now
+        out = self.filter.update(accel, gyro, dt)
+        if out is None:                      # still averaging its first second
+            return
+        with self._lock:
+            self._latest = (out[0] - self.offsets[0], out[1] - self.offsets[1])
+            self._last_ok = now
+        if self._logged is not None:                # first good angle after a problem
+            log.info("tilt sensor reading again")
+            self._logged = None
+
+    def _run(self):
         while not self._stop.is_set():
-            try:
-                raw = bus.read_i2c_block_data(self.address, OUTX_L_G, 12)
-                v = [int.from_bytes(bytes(raw[i:i + 2]), "little", signed=True) for i in range(0, 12, 2)]
-                g_raw = self._orient(*(n * GYRO_DPS_PER_LSB for n in v[:3]))
-                self._gyro_sum = [a + b for a, b in zip(self._gyro_sum, g_raw)]
-                self._gyro_n += 1
-                gyro = tuple(a - b for a, b in zip(g_raw, self.gyro_bias))
-                accel = self._orient(*(n * ACCEL_G_PER_LSB for n in v[3:]))
-                now = time.monotonic()
-                out = self.filter.update(accel, gyro, min(0.05, now - t))
-                t = now
-                if out is None:              # still settling (first half second)
-                    continue
-                roll, pitch = out
-                with self._lock:
-                    self._latest = (roll - self.offsets[0], pitch - self.offsets[1])
-                    self._last_ok = now
-            except OSError as e:
-                log.debug("tilt read failed: %s", e)
+            self.step(self.clock())
             self._stop.wait(0.01)
 
-    def angles(self):
+    def angles(self, now=None):
+        now = self.clock() if now is None else now
         with self._lock:
-            if self._latest is None or time.monotonic() - self._last_ok > 1.0:
+            if self._latest is None or now - self._last_ok > 1.0:
                 return None
             return self._latest
 

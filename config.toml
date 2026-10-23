@@ -106,6 +106,20 @@ hold = 0.5                # seconds an angle must last before it shows (a bump i
 hysteresis = 1.0          # degrees back inside a limit before the warning clears
 filter_seconds = 3.0      # how slowly gravity corrects the gyro: longer = bumps move it less
 
+[temperature]             # DS18B20 sensors on the 1-Wire bus (GPIO 4; breakout board rev 2.7)
+# BOX = the sensor on the breakout board (the box's air). Probes = waterproof DS18B20s plugged into the board's
+# TEMP PROBE connector (several can share it): e.g. one in the cab, one outside. Shown in the header.
+# Pi setup, once: add  dtoverlay=w1-gpio  to /boot/firmware/config.txt and reboot.
+# Find the IDs:  python3 dash.py --temps   (hold a sensor in your fingers to see which one warms up)
+enabled = true
+units = "F"               # "F" or "C" on screen (the limits below are always in C)
+board_id = ""             # the board's own sensor, e.g. "28-0000012345ab". "" = worked out when it's the only one
+probes = []               # e.g. [ { id = "28-00000abcdef1", name = "OUT" }, { id = "28-00000abcdef2", name = "CAB" } ]
+ambient = "each"          # "each" = every probe by name, "average" = one AMB reading (their average)
+box_warn = 50.0           # C (122 F): amber BOX HOT, one beep
+box_alarm = 65.0          # C (149 F): red BOX HOT, alarm tone (no horn)
+read_every = 5.0          # seconds between readings
+
 [pi_health]               # the Pi's own warnings, shown in the header (amber, one beep)
 enabled = true
 temp_warn = 80.0          # PI HOT at or above this CPU temperature (C). The Pi slows itself down at 80-85 C.

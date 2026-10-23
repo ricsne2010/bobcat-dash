@@ -344,6 +344,8 @@ class SimSensors:
         ("D", "engine bogs to ~700 rpm / recovers (low idle)"),
         ("Left / Right", "roll the machine 3 deg (right = right side down)"),
         (", / .  / 0", "pitch nose down / nose up 3 deg; 0 = level ground"),
+        ("-", "unplug / replug the tilt sensor (NO SIGNAL)"),
+        ("=", "box temp: normal / warm / hot / sensor missing"),
         ("P / X", "hour meter +10 h / hours + cool-down 60x faster"),
         ("I / U", "Pi too hot / 5 V supply low (each on / off)"),
         ("J", "light display: big tiles / small icons"),
@@ -373,6 +375,10 @@ class SimSensors:
         self.cold = False            # C: cold engine (longer crank, deeper battery dip)
         self.tilt_target = [0.0, 0.0]   # Left / Right = roll, , / . = pitch, 0 = level
         self.tilt = [0.0, 0.0]
+        self.tilt_unplugged = False     # - : unplug / replug the tilt sensor
+        self.box_steps = [38.0, 54.0, 68.0, None]   # = : breakout box temp: normal / warm / hot / sensor missing
+        self.box_i = 0
+        self.tilt_back_in = 0.0         # after replugging, the real reader re-averages for a second
         self.no_start = False        # W: it won't catch (no fuel / no spark): cranks until you let go
         self.ran = False             # it ran (and charged) since the last start attempt
         self.volts = 12.6            # battery model: dips while cranking, charges once running
@@ -431,6 +437,13 @@ class SimSensors:
             return
         if key == "0":
             self.tilt_target = [0.0, 0.0]
+            return
+        if key == "=":
+            self.box_i = (self.box_i + 1) % len(self.box_steps)
+            return
+        if key == "-":
+            self.tilt_unplugged = not self.tilt_unplugged
+            self.tilt_back_in = 1.0 if not self.tilt_unplugged else 0.0
             return
         if key == "s":
             self.running = not self.running and self.key_on   # no ignition, no start
@@ -528,6 +541,8 @@ class SimSensors:
             parts.append("won't start")
         if self.idle_sag:
             parts.append("idle: SAGGING")
+        if self.tilt_unplugged:
+            parts.append("tilt: unplugged")
         gone = [n.replace("hyd_", "").replace("_pressure", "").replace("_", " ") for n in self.names if n in self.unplugged]
         if gone:
             parts.append("unplugged: " + ", ".join(gone))
@@ -585,8 +600,18 @@ class SimSensors:
             "warnings": warnings,
             "key": self.key_on,
             "lights": self.light_states(),
-            "tilt": (self.tilt[0] + shake, self.tilt[1] + 0.5 * shake),
+            "tilt": self._tilt_reading(dt, shake),
+            "temps": {"box": self.box_steps[self.box_i],
+                      "probes": [("CAB", 33.5 + 0.5 * math.sin(now / 40)), ("OUT", 41.0 + math.sin(now / 60))]},
         }
+
+    def _tilt_reading(self, dt, shake):
+        if self.tilt_unplugged:
+            return None
+        if self.tilt_back_in > 0:                   # just plugged back in: set up and averaging
+            self.tilt_back_in -= dt
+            return None
+        return (self.tilt[0] + shake, self.tilt[1] + 0.5 * shake)
 
     def light_states(self):
         """Lamp side of each switch: the lights are fed through the key (a relay), so with the

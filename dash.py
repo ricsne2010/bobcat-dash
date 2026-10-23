@@ -29,6 +29,7 @@ from hourmeter import HourMeter, set_hours_cli
 from pihealth import PiHealth
 from starter import StarterGuard
 from tilt import TiltSensor, TiltStatus, zero_cli
+from temps import TempSensors, TempStatus, list_cli as temps_cli
 from power import COUNTDOWN, ON, SHUTDOWN, PowerManager
 from sensors import calibrate, light_inputs, make_sensors
 from version import BUILD_DATE, VERSION
@@ -283,6 +284,8 @@ def flat_states(st):
     out.update({src: WARN for src, _ in st.get("system", [])})
     if st.get("tilt"):
         out["tilt"] = st["tilt"]["state"]
+    if st.get("temps"):
+        out["box_temp"] = st["temps"]["box"][0]
     return out
 
 
@@ -498,9 +501,20 @@ class Dash:
         pygame.draw.rect(self.screen, HEADER, rect)
         logo = self.text("BOBCAT", 44, TEXT, midleft=(rect.x + self.px(20), rect.centery))
         left_edge = logo.right
+        temps = st.get("temps")
+        if temps:                       # breakout box temperature (pill when hot) and the ambient probes
+            bstate, btext = temps["box"]
+            x = left_edge + self.px(16)
+            if bstate in (WARN, ALARM):
+                c = AMBER if bstate == WARN else (RED if flash else RED_DARK)
+                left_edge = self.pill(btext, 22, c, midleft=(x, rect.centery)).right
+            else:
+                left_edge = self.text(btext, 24, GRAY if bstate == UNKNOWN else DIM, midleft=(x, rect.centery)).right
+            for a in temps["ambient"]:
+                left_edge = self.text(a, 24, TEXT, midleft=(left_edge + self.px(14), rect.centery)).right
         if self.sim_text:
             left_edge = self.text(self.sim_text, 24, AMBER, max_w=self.px(250),
-                                  midleft=(logo.right + self.px(14), rect.centery)).right
+                                  midleft=(left_edge + self.px(14), rect.centery)).right
 
         # the Pi's own warnings sit left of the status pill; the engine text moves left to make room
         free_right = rect.right - self.px(170)
@@ -519,6 +533,8 @@ class Dash:
         states += [WARN for _ in st.get("system", [])]
         if st.get("tilt"):
             states.append(st["tilt"]["state"])
+        if st.get("temps"):
+            states.append(st["temps"]["box"][0])
         alarms, warns = states.count(ALARM), states.count(WARN) + states.count(UNKNOWN)
         right = (rect.right - self.px(16), rect.centery)
         if lamp_test:
@@ -898,6 +914,7 @@ def main():
     ap.add_argument("--version", action="version", version=f"Bobcat Custom Display {VERSION} (built {BUILD_DATE})")
     ap.add_argument("--boot-splash", nargs="?", const=os.path.join(here, "splash", "boot-splash.png"), metavar="PNG",
                     help="save the splash screen (picture + caption) at the display size, for the Pi's boot splash")
+    ap.add_argument("--temps", action="store_true", help="list the temperature sensors (IDs, readings, roles)")
     ap.add_argument("--zero-tilt", action="store_true", help="park on level ground, then run this to zero the angle sensor")
     ap.add_argument("--force", action="store_true", help="with --zero-tilt: save even if it reads >5 deg off level or moving")
     ap.add_argument("--set-hours", type=float, metavar="HOURS",
@@ -915,6 +932,8 @@ def main():
         return
     if args.zero_tilt:
         raise SystemExit(zero_cli(cfg, force=args.force))
+    if args.temps:
+        raise SystemExit(temps_cli(cfg))
     log.info("Bobcat Custom Display %s (built %s)", VERSION, BUILD_DATE)
     if args.boot_splash:
         raise SystemExit(save_boot_splash(cfg, here, args.boot_splash))
@@ -943,6 +962,8 @@ def main():
     starter = StarterGuard(cfg)
     tilt_status = TiltStatus(cfg)
     tilt_sensor = None if args.sim or not tilt_status.enabled else TiltSensor(cfg)
+    temp_status = TempStatus(cfg)
+    temp_sensors = None if args.sim or not temp_status.enabled else TempSensors(cfg)
     power = PowerManager(cfg, sim=args.sim, start_off=args.sim)
     power_state = power.state           # the simulator starts as a parked machine: key off, powered down
     splash = Splash(screen, cfg, here)
@@ -1063,6 +1084,8 @@ def main():
             st["system"] = health.status(now)
             st["tilt"] = tilt_status.update(readings.get("tilt") if args.sim else
                                             (tilt_sensor.angles() if tilt_sensor else None), now)
+            st["temps"] = temp_status.update(readings.get("temps") if args.sim else
+                                             (temp_sensors.snapshot() if temp_sensors else None))
             lamp_test = now < t0 + d.get("lamp_test_seconds", 0)      # includes the splash time
             if lamp_test:
                 alerts.update({}, now)          # only the test chirp
@@ -1089,6 +1112,8 @@ def main():
     finally:
         if tilt_sensor:
             tilt_sensor.close()
+        if temp_sensors:
+            temp_sensors.close()
         health.close()
         alerts.close()
         hourmeter.close()

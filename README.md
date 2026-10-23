@@ -221,9 +221,40 @@ braking, bouncing and turning don't make the angle jump.
 - **Parking and restarting on a slope is fine.** Nothing needs remembering: gravity gives the true angle at
   every start-up. The first second is averaged (during the boot splash) so engine vibration doesn't skew
   it. If you're parked past a limit, the panel says so as soon as the dash is up.
-- With no sensor answering, the panel shows grey **NO SIGNAL**. To leave tilt out entirely, set
+- **If the sensor is missing or fails, the panel shows grey NO SIGNAL, never a guessed "level".** It counts
+  as `CHECK` in the header and plays the connection-lost sound once; nothing else on the dash is affected.
+  The dash keeps trying: a sensor plugged in later is picked up within about 2 s. A plug that works loose
+  and back in, or a power blip, makes the chip restart powered down and read all zeros; that's caught
+  (along with any reading where gravity isn't about 1 g, or the chip losing its settings), and the sensor is
+  set up again and re-averaged for a second before an angle shows. A single glitchy read is ignored. Each
+  problem is written once to the log (`journalctl -u bobcat-dash`).
+- To leave tilt out entirely, set
   `enabled = false` in `[tilt]`: the screen goes back to the original layout (separate battery and fuel panels,
   taller warning tiles).
+
+## Temperatures
+
+The header shows temperatures next to **BOBCAT**: the breakout box's air, then your probes.
+
+```
+BOBCAT   BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING              ALL OK
+```
+
+- **BOX** is the DS18B20 on the breakout board (rev 2.7): the air inside its enclosure. Above **50 °C
+  (122 °F)** it turns into an amber **BOX HOT** pill (one beep, counts in `CHECK`); above **65 °C (149 °F)** red
+  (alarm tone, no horn). The breakout board's own parts are rated well above that; the limits warn you that
+  the box is cooking (no ventilation, direct sun) before anything else in it suffers. If the board sensor
+  stops answering it shows grey `BOX --` (and the connection-lost sound).
+- **Probes:** waterproof DS18B20 probes (stainless tip on a cable, 3-wire) plugged into the board's
+  **TEMP PROBE** connector: red to 3V3, black to GND, yellow (or white) to DQ. Several can share the one
+  connector (splice them together, or use a small junction). Each shows by the name you give it, e.g. `CAB`
+  and `OUT`, or set `ambient = "average"` for a single `AMB` reading. A missing probe shows `--`.
+- **Setup:** once, `dtoverlay=w1-gpio` in `/boot/firmware/config.txt` (see *Installing on the Pi*). Then
+  `python3 dash.py --temps` lists every sensor with its ID and reading. Hold one in your fingers for 20 s and
+  run it again to see which is which, then put the IDs in `[temperature]`: `board_id` and the `probes` list
+  with names. With only the board sensor fitted, nothing needs setting.
+- `units = "F"` (or `"C"`) sets what's shown; the BOX limits in `config.toml` are in °C.
+- Simulator: **=** steps the box through normal, warm, hot and sensor missing; CAB and OUT are simulated.
 
 ## Pi health warnings
 
@@ -644,6 +675,8 @@ systemd-analyze blame | head                          # what's still slow
 ```bash
 # HOLD: keep the board's power on from the moment the Pi starts
 echo "gpio=26=op,dh" | sudo tee -a /boot/firmware/config.txt
+# TEMPERATURES: 1-Wire on GPIO 4 for the DS18B20s (breakout board rev 2.7)
+echo "dtoverlay=w1-gpio" | sudo tee -a /boot/firmware/config.txt
 # KILL: cut the power as the very last step of shutdown
 sudo install -m 755 tools/bobcat-dash-poweroff /usr/lib/systemd/system-shutdown/
 # let the dash run "systemctl poweroff" without a password
@@ -772,6 +805,8 @@ python3 dash.py --sim --windowed
 | I / U | Pi too hot (PI HOT) / 5 V supply low (LOW 5V): each press turns it on or off |
 | Left / Right | roll the machine 3° (Right = right side down) |
 | , / . / 0 | pitch 3° nose down / nose up; 0 = back to level |
+| - | unplug / replug the tilt sensor: NO SIGNAL, then a second's re-averaging when it's back |
+| = | breakout box temperature: normal / warm (BOX HOT, amber) / hot (red) / sensor missing |
 | J | light display: big tiles / small icons |
 | 7 | front light switch on / off |
 | 8 / 9 | the 3-position back switch: rear lights / work light (pressing the other one switches over, pressing the same one again = middle, off) |
@@ -800,6 +835,7 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `pihealth.py`: Pi temperature and 5 V supply warnings
 - `starter.py`: starter rest reminder and cooling countdown
 - `tilt.py`: machine angle: sensor reader, gyro/accelerometer blending, limits, `--zero-tilt`
+- `temps.py`: box and probe temperatures (DS18B20, 1-Wire), BOX HOT limits, `--temps`
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
 - `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff`
 - `tools/fit_splash.py`: fits your picture to the screen for the boot splash

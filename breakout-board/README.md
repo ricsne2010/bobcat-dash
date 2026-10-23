@@ -1,13 +1,13 @@
-# Bobcat Dash Breakout Board (rev 2.6)
+# Bobcat Dash Breakout Board (rev 2.7)
 
-A 150 × 134 mm, 2-layer, all through-hole PCB that sits between the machine's wiring harness and
+A 162 × 134 mm, 2-layer, all through-hole PCB that sits between the machine's wiring harness and
 the Raspberry Pi. Every harness wire lands on a labeled, unpluggable terminal. Every signal has a
 status LED or a test point, so you can find a fault with a multimeter and your eyes. Rev 2.0 adds a
 **power-hold circuit**: after key-off, the Pi saves the engine hours and shuts down cleanly before the
 board turns the power off. Rev 2.1 adds **light sensing**: the dash shows when the front, rear or work
 lights are switched on. Rev 2.2 adds a **coil tach input**: the RPM comes straight from the ignition coil, so no
 crank sensor is needed. Rev 2.4 gives the coil wire its own plug in a fenced-off **high-voltage corner**, and
-outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connector for the roll / pitch sensor; rev 2.6 makes it a latching Molex Micro-Fit.
+outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connector for the roll / pitch sensor; rev 2.6 makes it a latching Molex Micro-Fit. Rev 2.7 adds **temperature**: a sensor for the box's air and a latching connector for external probes.
 
 ![Board](docs/board-top.png)
 
@@ -30,6 +30,7 @@ outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connecto
 | **Modules** | Sockets for the ADS1115 ADC board and the MAX98357A amplifier board. The outlines show where each module sits. |
 | **Test points** | 16 labeled test points in a strip: power rails, three GND loops for your meter's black lead, and every signal. Four more next to the power hold: `FUSED 12V`, `IGN`, `HOLD`, `TIMER`. |
 | **TILT connector** (rev 2.5, latching since 2.6, top-left corner) | J13, a **Molex Micro-Fit 3.0** 4-pin header (43650-0415) with a positive latch, for the machine-angle sensor (LSM6DSOX, Adafruit 4438), on the Pi's I2C bus with the ADS1115. Pins **1 GND, 2 3V3, 3 SDA, 4 SCL**. Cable side: housing 43645-0400 with four 43030-0007 crimp pins (22–24 AWG, ideally 4-core shielded); solder the other end straight into the sensor board (its STEMMA QT socket is friction-only). 100 Ω in SDA and SCL (R83, R84) protect the Pi's pins and soften noise on the cable; 47 Ω in the 3.3 V feed (R85) limits a shorted cable to ~70 mA, so the Pi's 3.3 V (which also feeds the ADS1115) stays up. Keep the cable under ~30–50 cm. |
+| **TEMPERATURE** (rev 2.7, right-hand column) | **U11**, a DS18B20 on the board, measures the box's air. **J14 TEMP PROBE**, a latching Molex Micro-Fit 3.0 3-pin (43650-0315), takes external waterproof DS18B20 probes: pins **1 GND, 2 DQ, 3 3V3**; several probes can share it. All on the Pi's 1-Wire bus (GPIO 4, pin 7), with a 4.7 kΩ pull-up (R86). 100 Ω in the probe data line (R87) and 47 Ω in its 3.3 V feed (R88) protect against a damaged probe cable. The board grew 12 mm wider for this column. |
 | **Logo** | The **Project Moon Pi** patch, 23 mm across, on the back silkscreen behind the ADC module (it reads correctly when you turn the board over). |
 | **To the Pi** | 40-pin box header. A standard 40-pin IDC ribbon cable connects pin 1 to pin 1 on the Pi. |
 
@@ -47,6 +48,7 @@ The coil input (rev 2.2) uses the same tach pin as before (GPIO 17), so no new p
 | `fab/bobcat-dash-breakout-gerbers.zip` | **Upload this to the board maker.** Gerbers + drill files. |
 | `fab/board-bom.csv` | Parts that solder onto the board, grouped by value. |
 | `docs/schematic.pdf` | Printable schematic (A2): every block drawn with real wires, boxed and named like the board's silkscreen blocks. |
+| `docs/mounting-template.pdf` | **Full-size (1:1) drilling template** for the 4 mounting holes, US Letter. Print at *Actual size* / 100 % and check its 100 mm and 6 in rulers before drilling (made by `tools/diagrams/make_template.py`). |
 | `docs/board-top.png`, `board-3d.png`, `board-bottom.png`, `board-logo.png` | Renders (`board-logo.png` is a close-up of the logo on the back). |
 | `generator/` | Scripts that generate the KiCad files from one parts-and-connections list (`design.py`). See its README. |
 
@@ -191,7 +193,8 @@ terms don't clearly allow passing it on. To get it in the 3D viewer and renders:
 
 1. On molex.com, search **43650-0415**, open **CAD Models** and download the **STEP** file (free; it may ask
    you to register). It's named `436500415.stp`.
-2. Put it in `kicad/3d/436500415.stp` (the folder is in `.gitignore`).
+2. Put it in `kicad/3d/436500415.stp` (the folder is in `.gitignore`). For the TEMP PROBE connector, do the same
+   for **43650-0315** (`436500315.stp`).
 
 The board already points to it, rotated and offset to sit on its pads. Without the file, KiCad just shows that
 connector's pads and outline; nothing else is affected (the 3D model isn't part of the Gerbers).
@@ -222,6 +225,9 @@ all day. Secure them from outside the board:
 | | 2 | − | Piezo alarm − (switched to ground by Q1) | 18 AWG |
 | **J12 COIL** (left edge) | 1 | COIL | **This machine:** ignition coil **negative (−)** terminal (PerTronix + Flame-Thrower 40611). Route it away from the spark plug leads. **Never** put it on any other pin. | 20 AWG, ideally shielded |
 | | 2 | GND | The shield's drain wire, if you use shielded wire (ground the shield at this end only). Otherwise empty. | — |
+| **J14 TEMP PROBE** (Micro-Fit 3.0, right edge) | 1 | GND | Probe black | 22–24 AWG |
+| | 2 | DQ | Probe yellow (or white): data | 22–24 AWG |
+| | 3 | 3V3 | Probe red. 3.3 V through 47 Ω | 22–24 AWG |
 | **J13 TILT** (Micro-Fit 3.0, top-left) | 1 | GND | Tilt sensor GND | 22–24 AWG |
 | | 2 | 3V3 | Tilt sensor VIN. 3.3 V through 47 Ω | 22–24 AWG |
 | | 3 | SDA | Tilt sensor SDA | 22–24 AWG |
@@ -347,4 +353,5 @@ instructions, wiring sketch and multimeter checks are in the main
 | 2.3 | Silkscreen only, no circuit change: `LIGHTS ON` heading over the FRONT / REAR / WORK LEDs, JP1 pins numbered 1-2-3, fuel table says `B gauge + dash`, test point `F1 OUT` renamed `FUSED 12V`. D45 moved down 2 mm so its label and cathode `K` no longer crowd the `FUEL` test point label. |
 | 2.4 | Test points `GATE` → `HORN CTRL` and `HORN` → `HORN 12V`. **High-voltage corner:** the coil input gets its own 2-pin plug **J12 COIL** (COIL, GND) on the left edge; TACH J5 goes back to 3 pins (Hall sensor only). J12, R80, R81, D45 and C11 sit together in a corner with a double outline, warning triangles and `HIGH VOLTAGE - IGNITION COIL`; the coil trace is now under 15 mm long instead of crossing the board. **Circuit outlines** with names around every block. Title moved above the test points; notes moved to the middle. Logo moved behind the ADC module (23 mm). D1 down 1.5 mm. **R15 (tach pull-up) 4.7 kΩ → 10 kΩ**: the optocouplers need half the current to pull GPIO 17 low, so a worn or hot PC817 still reads the coil reliably on a 12 V system. |
 | 2.5 | **TILT header** J13 (GND, 3V3, SDA, SCL) for the roll / pitch sensor, top-left corner, with R83 / R84 (100 Ω, SDA / SCL) and R85 (47 Ω, sensor 3.3 V). Schematic: new TILT SENSOR HEADER block. |
+| 2.7 | **Temperature:** DS18B20 U11 on the board (box air), latching 3-pin Micro-Fit **J14 TEMP PROBE** for external DS18B20 probes, R86 4.7 kΩ pull-up, R87 100 Ω / R88 47 Ω probe protection, on GPIO 4 (Pi pin 7). New TEMP column on the right edge: the board is **12 mm wider (162 × 134 mm)**; mounting holes H2 / H4 moved 12 mm right. |
 | 2.6 | J13 TILT becomes a **latching Molex Micro-Fit 3.0** (43650-0415) instead of a bare pin header, so vibration can't shake it loose; resistors moved down to fit. Harness connectors stay Phoenix MSTB (they take the 14–16 AWG harness wire); secure them externally (see *Keeping the plugs in*). |

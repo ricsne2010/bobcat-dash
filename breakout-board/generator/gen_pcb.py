@@ -8,7 +8,7 @@ from design import PARTS, NETCLASSES, DEFAULT_TRACK, DEFAULT_CLEAR, nets
 
 FPDIR = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
 OUT = sys.argv[1] if len(sys.argv) > 1 else "out/bobcat-dash-breakout.kicad_pcb"
-W, H = 150.0, 134.0          # rev 2.0: +24 mm at the bottom for the power-hold band
+W, H = 162.0, 134.0          # rev 2.0: +24 mm at the bottom for the power-hold band; rev 2.7: +12 mm wide (TEMP column)
 MM = pcbnew.FromMM
 
 
@@ -63,7 +63,11 @@ TP_LABELS = ["BAT IN", "12V ON", "HORN 12V", "5V", "3V3", "GND", "GND", "GND", "
 for i in range(16):
     P[f"TP{i + 1}"] = (8 + i * 8.8, 34.5, 0)
 # H4 moves up from the corner (rev 2.1) to make room for the LIGHTS connector
-P.update({"H1": (4.5, 4.5, 0), "H2": (145.5, 4.5, 0), "H3": (4.5, 117.0, 0), "H4": (145.5, 117.0, 0)})
+P.update({"H1": (4.5, 4.5, 0), "H2": (157.5, 4.5, 0), "H3": (4.5, 117.0, 0), "H4": (157.5, 117.0, 0)})
+# rev 2.7: TEMPERATURE column on the new right-hand strip (x 150-162): probe connector, its resistors,
+# the board sensor and its pull-up, top to bottom
+P.update({"J14": (154.8, 38.0, 270), "R87": (153.6, 50.0, 270), "R88": (158.4, 50.0, 270),
+          "U11": (153.5, 62.5, 0), "R86": (156.0, 67.0, 270)})
 
 # coil tach input. Rev 2.4: everything that sees the raw coil voltage is in the boxed HIGH VOLTAGE corner on
 # the left edge: its own plug J12 (plug face flush with the edge), R80 -> R81 folded back in two rows, then the
@@ -111,7 +115,7 @@ LIGHT_REF_AT = {}
 for u, r, led, dz in [("U7", "R17", "D18", "D28"), ("U8", "R18", "D19", "D29"), ("U9", "R19", "D20", "D38")]:
     LIGHT_REF_AT.update({u: (3.81, 1.27), r: (3.81, 0.0), led: (1.27, 3.3), dz: (6.8, 0.0)})
 LIGHT_REF_AT.update({"R80": (6.35, 0.0), "R81": (-6.35, 0.0)})        # coil resistors: label on the body
-VERT_REF = {"R83", "R84", "R85"}                                       # standing resistors: label along the body
+VERT_REF = {"R83", "R84", "R85", "R86", "R87", "R88"}                                       # standing resistors: label along the body
 missing = [p["ref"] for p in PARTS if p["ref"] not in P]
 assert not missing, missing
 
@@ -164,7 +168,9 @@ for name in sorted(set(PIN_NET.values()), key=lambda n: "/" + _design_name.get(n
 # 3D models KiCad doesn't ship. Molex's STEP for the TILT connector: download it free from molex.com (part
 # 43650-0415, CAD models) into kicad/3d/. It isn't in the repository (Molex's terms), so without it KiCad just
 # shows the pads. Rotation / offset found by rendering: pins in the pads, housing on the board, latch to the notch.
-MODEL_3D = {"J13": ("${KIPRJMOD}/3d/436500415.stp", (90, 0, 0), (4.5, -2.0, 9.9))}
+MODEL_3D = {"J13": ("${KIPRJMOD}/3d/436500415.stp", (90, 0, 0), (4.5, -2.0, 9.9)),
+            # same Molex series, 3 pins (centre at 3.0 mm): download 43650-0315 the same way
+            "J14": ("${KIPRJMOD}/3d/436500315.stp", (90, 0, 0), (3.0, -2.0, 9.9))}
 
 link = json.load(open("sch_uuids.json"))
 for p in PARTS:
@@ -201,7 +207,7 @@ for p in PARTS:
         ref.SetPosition(V(x + dx, y + dy)); ref.SetTextAngleDegrees(0)
     if p["ref"] in VERT_REF:
         ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(V(0.8, 0.8))
-    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13"):
+    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14"):
         ref.SetVisible(False)
 
 # ---------------------------------------------------------------- outline (rounded rectangle)
@@ -316,7 +322,13 @@ silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
 silk("BOBCAT DASH BREAKOUT", 28.0, 28.6, 1.5, bold=True, align="left")
-silk("rev 2.6  2026-10", 61.0, 28.6, 0.9, align="left")
+silk("rev 2.7  2026-10", 61.0, 28.6, 0.9, align="left")
+# rev 2.7: TEMPERATURE column: probe pin names beside the connector
+for i, lab in enumerate(["GND", "DQ", "3V3"]):
+    silk(lab, 158.2, 38.0 + i * 3.0 + 0.4, 0.8, bold=True, align="left")
+silk("PROBE", 155.9, 33.2, 0.8, bold=True)
+silk("BOX", 156.0, 79.8, 0.8, bold=True)
+silk("SENSOR", 156.0, 81.4, 0.8, bold=True)
 # rev 2.5: TILT sensor header: pin names under the pins, title beside it
 for i, lab in enumerate(["GND", "3V3", "SDA", "SCL"]):
     silk(lab, 30.0 + i * 3.0, 9.0, 0.8)
@@ -367,13 +379,18 @@ group_box([(0.8, 57.7), (44.6, 57.7)], "POWER IN / FUSES / HORN DRIVER", 22.0, c
 silk_line(44.6, 88.8, 44.6, 90.6)
 group_box([(103.4, 44.0), (44.6, 44.0), (44.6, 88.8), (103.4, 88.8)],
           "ENGINE + HYDRAULIC INPUTS  (TACH, OIL, FILTER, TEMP)", 72.9, title_on=2, closed=False)
-group_box([(149.2, 40.3), (103.4, 40.3), (103.4, 88.8), (128.05, 88.8), (128.05, 60.0)],
+group_box([(149.75, 40.3), (103.4, 40.3), (103.4, 88.8), (128.05, 88.8), (128.05, 60.0)],
           "BATTERY / FUEL / BUTTON", 115.0, title_on=2, closed=False)
-group_box([(128.05, 60.0), (149.2, 60.0)], "LIGHTS ON", 141.5, closed=False)
+group_box([(128.05, 60.0), (149.75, 60.0)], "LIGHTS ON", 141.5, closed=False)
 silk_line(128.05, 88.8, 128.05, 90.6)
-group_box([(149.2, 114.75), (1.2, 114.75), (1.2, 90.6), (128.05, 90.6), (128.05, 91.7), (149.2, 91.7)],
+group_box([(149.75, 114.75), (1.2, 114.75), (1.2, 90.6), (128.05, 90.6), (128.05, 91.7), (149.75, 91.7)],
           "POWER HOLD: stays on after key-off while the Pi saves and shuts down (3 min max)", 37.0,
           title_on=2, closed=False)       # open on the right: the board edge closes it, like the boxes above
+
+# rev 2.7: the board is wider, so the blocks that ran to the old right edge get a right-hand line,
+# and the new TEMPERATURE column has its own outline
+silk_line(149.75, 40.3, 149.75, 114.75)
+group_box(rect(150.4, 31.2, 161.4, 83.4), "TEMP", 155.9)
 
 # HIGH VOLTAGE corner: double outline, warning triangles, open to the board edge where J12 plugs in
 HV = (0.0, 40.6, 39.6, 57.0)
