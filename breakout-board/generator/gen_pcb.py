@@ -460,7 +460,7 @@ silk("GND", 14.2, 51.98, 0.8, bold=True, align="left")
 # ---------------------------------------------------------------- Project Moon Pi logo (back silkscreen)
 # logo_silk.json comes from make_logo_silk.py. It's on the back, so it's mirrored left-right here
 # and reads the right way round when you turn the board over. Placed in the largest pad-free area.
-LOGO_CENTRE, LOGO_WIDTH = (146.0, -12.5), 18.0   # rev 2.8: on top, in the new top strip beside the title
+LOGO_CENTRE, LOGO_WIDTH = (141.5, -9.5), 26.0   # rev 2.8: on top, in the new top strip beside the title
 
 
 def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):

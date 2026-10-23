@@ -107,6 +107,8 @@ x0, _ = PIN1["J3"]
 for i, lab in enumerate(LABELS_S):
     silk(lab, x0 + i * 2.54, ROW_S - 1.9, 0.8, angle=90, align="left")
 silk("ADS1115 ADAPTER", CX, ROW_S + 2.6, 0.9, bold=True)
+silk("10-PIN BOARD HOLES", CX, HOLES[4][1] - 0.2, 0.8, bold=True)          # between H5 and H6
+silk("(original Adafruit layout)", CX, HOLES[4][1] + 1.4, 0.8)
 silk(f"10-pin board -> 2-row socket  rev {REV}", CX, ROW_S + 3.9, 0.8)
 # bottom: the two rows' names, as on the breakout board, between the rows (mirrored: read from underneath)
 for row, labs, dy, al in ((ROW_A, LABELS_A, 2.1, "left"), (ROW_P, LABELS_P, -2.1, "right")):   # mirrored: ends swap

@@ -97,8 +97,8 @@ for k, net in enumerate(PARTS["J3"][3].values()):        # one vertical run per 
     col = 81.28 + k * 5.08
     wire((ax, ay), (col, ay), (col, by), (bx, by))
     label(net, ax + 1.27, ay)
-for i in range(4):
-    place(f"H{i + 1}", 200.66 + i * 10.16, 66.04, (200.66 + i * 10.16, 60.96), (200.66 + i * 10.16, 71.12))
+for i in range(6):
+    place(f"H{i + 1}", 195.58 + i * 10.16, 66.04, (195.58 + i * 10.16, 60.96), (195.58 + i * 10.16, 71.12))
 
 text("ADS1115 ADAPTER", 30.48, 30.48, 2.54)
 text("Lets a 10-pin inline ADS1115 board (older Adafruit 1085 and most clones) plug into the breakout board's", 30.48, 38.1)
@@ -106,6 +106,7 @@ text("two-row ADS1115 sockets (rev 2.8: J15 + J10). Straight-through wiring: sam
 text("ADDR is grounded on the breakout board), no software change. A+ / A- of the two-row pattern are not used.", 30.48, 45.72)
 text("J1 and J2 are male pins underneath. J3 is the socket on top. Crossing wires without a dot are not joined.", 30.48, 127.0)
 text("H1-H4: M2.5, line up with the breakout board's H5-H8: screw the adapter down on 11 mm standoffs.", 190.5, 81.28)
+text("H5-H6: M2.5, the 10-pin board's own holes (original Adafruit layout): screw it down too.", 190.5, 85.09)
 
 syms = sorted({p[0] for p in PARTS.values()})
 doc = (f'(kicad_sch (version 20250114) (generator "eeschema") (generator_version "9.0") (uuid "{ROOT}") (paper "A4") '

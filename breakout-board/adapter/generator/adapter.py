@@ -8,7 +8,7 @@ pattern, the same four M2.5 standoff holes, and a 10-pin socket on top. Straight
 Shared by gen_sch.py (schematic) and gen_pcb.py (board).
 """
 NAME = "ads1115-adapter"
-REV = "1.0"
+REV = "1.1"
 
 # ref: (symbol, value, footprint, {pin: net or None}, description)
 PARTS = {
@@ -28,16 +28,21 @@ PARTS = {
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("Mechanical:MountingHole", "M2.5", "MountingHole:MountingHole_2.7mm_M2.5", {},
                       "Standoff hole, lines up with the breakout board's H5-H8")
+for i in (5, 6):
+    PARTS[f"H{i}"] = ("Mechanical:MountingHole", "M2.5", "MountingHole:MountingHole_2.7mm_M2.5", {},
+                      "Standoff hole for the 10-pin ADS1115 board itself (original Adafruit layout)")
 
 # Board geometry (mm, y down). Rows 12.7 mm apart like the Adafruit 1085; the 10-pin socket sits between them.
 # The right-hand 12 mm is a strip for the Project Moon Pi logo (top and back). On the breakout board that side sits over
 # the empty space between the ADC module and the TEMP column.
-W, H = 42.0, 19.7
+W, H = 42.0, 24.7                     # 5 mm added on top (rev 1.1) for the 10-pin board's own holes
 CX = 15.0                             # centre line of the pin rows and holes
 LOGO_CENTRE, LOGO_WIDTH = (36.0, H / 2), 11.0
-ROW_A, ROW_P = 3.5, 3.5 + 12.7        # J1 (analog row, top), J2 (power row, bottom): same order as on the board
+ROW_A, ROW_P = 8.5, 8.5 + 12.7        # J1 (analog row, top), J2 (power row, bottom): same order as on the board
 ROW_S = (ROW_A + ROW_P) / 2           # J3 socket
-HOLES = [(CX - 10.16, ROW_A), (CX + 10.16, ROW_A), (CX - 10.16, ROW_P), (CX + 10.16, ROW_P)]
+HOLES = [(CX - 10.16, ROW_A), (CX + 10.16, ROW_A), (CX - 10.16, ROW_P), (CX + 10.16, ROW_P),
+         # H5, H6: the 10-pin board's two holes, on its far edge: 12.7 mm from its row, in line with pins 1 and 10
+         (CX - 11.43, ROW_S - 12.7), (CX + 11.43, ROW_S - 12.7)]
 PIN1 = {"J1": (CX - 6.35, ROW_A), "J2": (CX - 6.35, ROW_P), "J3": (CX - 11.43, ROW_S)}
 BACK = {"J1", "J2"}                   # header bodies under the board, pins pointing down
 
