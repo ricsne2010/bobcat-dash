@@ -367,8 +367,11 @@ Safety nets:
 
 - **Key back on during shutdown:** the board cuts the power for a few seconds and the Pi starts
   up again by itself. You don't have to wait.
-- **The Pi hangs or the software isn't running:** a timer on the board cuts the power **3 minutes**
-  after key-off, no matter what. A crashed Pi can't flatten the battery.
+- **The dash isn't running** (crashed or stopped): a small separate service, `bobcat-dash-keywatch`,
+  watches the key too. If the key has been off for **30 seconds** and the Pi is still up, it shuts the Pi
+  down cleanly, so the SD card is still safe. (When the dash is working it has shut down long before.)
+- **The whole Pi hangs:** a timer on the board cuts the power **3 minutes** after key-off, no matter
+  what. A crashed Pi can't flatten the battery.
 - **The key is never seen on** (a board without this circuit, or the key turned off while the Pi was
   still booting): the dash does nothing, and on a rev 2.0 board the timer turns the power off.
 
@@ -682,6 +685,10 @@ sudo install -m 755 tools/bobcat-dash-poweroff /usr/lib/systemd/system-shutdown/
 # let the dash run "systemctl poweroff" without a password
 sudo install -m 440 tools/bobcat-dash-sudoers /etc/sudoers.d/bobcat-dash
 sudo visudo -c                             # must say "parsed OK"
+# BACKSTOP: a clean power-off 30 s after key-off even if the dash isn't running
+sudo install -m 755 tools/bobcat-dash-keywatch /usr/local/bin/
+sudo install -m 644 tools/bobcat-dash-keywatch.service /etc/systemd/system/
+sudo systemctl enable bobcat-dash-keywatch
 sudo reboot
 ```
 
@@ -837,6 +844,7 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `tilt.py`: machine angle: sensor reader, gyro/accelerometer blending, limits, `--zero-tilt`
 - `temps.py`: box and probe temperatures (DS18B20, 1-Wire), BOX HOT limits, `--temps`
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
+- `tools/bobcat-dash-keywatch` (+ `.service`): backstop that powers off 30 s after key-off if the dash isn't running
 - `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff`
 - `tools/fit_splash.py`: fits your picture to the screen for the boot splash
 - `splash/`: the boot splash picture `splash.png` (1024×768), versions for 800×480 and 1280×720 displays, and the original logo

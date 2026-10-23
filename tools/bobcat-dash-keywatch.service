@@ -1,0 +1,11 @@
+[Unit]
+Description=Bobcat dash: power off at key-off even if the dash isn't running
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/local/bin/bobcat-dash-keywatch
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

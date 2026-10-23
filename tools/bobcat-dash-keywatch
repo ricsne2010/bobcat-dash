@@ -1,0 +1,35 @@
+#!/bin/sh
+# Bobcat dash: backstop for key-off shutdown (breakout board rev 2.0 and later).
+#
+# The dash itself shuts the Pi down 5 s after key-off (with its countdown and a chance to cancel).
+# This watcher covers the case where the dash isn't running: if the key has been off for
+# OFF_LIMIT seconds straight and the Pi is still up, it powers off cleanly. If the dash is
+# working, it has long since started the shutdown and systemd stops this script first.
+#
+# It acts only after it has seen the key ON at least once, so a board without the power-hold
+# circuit (KEY input not connected) never shuts the Pi down.
+#
+# Install (see README, "Installing on the Pi", step 3):
+#   sudo install -m 755 tools/bobcat-dash-keywatch /usr/local/bin/
+#   sudo install -m 644 tools/bobcat-dash-keywatch.service /etc/systemd/system/
+#   sudo systemctl enable --now bobcat-dash-keywatch
+KEY_GPIO=${KEY_GPIO:-6}          # KEY input: low = key on (optocoupler pulls it down)
+OFF_LIMIT=${OFF_LIMIT:-30}       # seconds; must stay longer than the dash's own 5 s countdown
+
+pinctrl set "$KEY_GPIO" ip pu    # input with pull-up, the same as the dash sets it
+seen_on=0
+off=0
+while true; do
+    if [ "$(pinctrl lev "$KEY_GPIO")" = "0" ]; then
+        seen_on=1
+        off=0
+    elif [ "$seen_on" = "1" ]; then
+        off=$((off + 1))
+        if [ "$off" -ge "$OFF_LIMIT" ]; then
+            logger -t bobcat-dash-keywatch "key off for ${OFF_LIMIT} s and the Pi is still up: powering off"
+            systemctl poweroff
+            exit 0
+        fi
+    fi
+    sleep 1
+done
