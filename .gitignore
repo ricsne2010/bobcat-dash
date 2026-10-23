@@ -20,3 +20,6 @@ breakout-board/generator/*.kicad_sch
 
 # diagram scripts: temporary PNGs (the published diagrams are the .jpg files at the top level)
 tools/diagrams/*.png
+
+# manufacturer 3D models (download them yourself: see breakout-board/README.md, 3D models)
+breakout-board/kicad/3d/

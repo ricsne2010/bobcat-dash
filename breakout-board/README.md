@@ -183,6 +183,19 @@ left off the board. With setup B, R32 and JP2 can be left off.
 
 Never fit JP2 in setup B. The gauge would back-feed the pull-up. It wouldn't damage anything, but the reading would be wrong.
 
+## 3D models
+
+KiCad's own library covers every part except the TILT connector (Molex Micro-Fit 3.0, 43650-0415): KiCad
+ships no Micro-Fit models. The project uses Molex's own STEP model, which isn't included here because Molex's
+terms don't clearly allow passing it on. To get it in the 3D viewer and renders:
+
+1. On molex.com, search **43650-0415**, open **CAD Models** and download the **STEP** file (free; it may ask
+   you to register). It's named `436500415.stp`.
+2. Put it in `kicad/3d/436500415.stp` (the folder is in `.gitignore`).
+
+The board already points to it, rotated and offset to sit on its pads. Without the file, KiCad just shows that
+connector's pads and outline; nothing else is affected (the 3D model isn't part of the Gerbers).
+
 ## Keeping the plugs in
 
 The harness plugs (Phoenix MSTB) hold by friction, which is fine on a bench but not on a machine that shakes

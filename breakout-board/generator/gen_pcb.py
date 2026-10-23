@@ -161,6 +161,11 @@ for name in sorted(set(PIN_NET.values()), key=lambda n: "/" + _design_name.get(n
     board.Add(ni)
     netobj[name] = ni
 
+# 3D models KiCad doesn't ship. Molex's STEP for the TILT connector: download it free from molex.com (part
+# 43650-0415, CAD models) into kicad/3d/. It isn't in the repository (Molex's terms), so without it KiCad just
+# shows the pads. Rotation / offset found by rendering: pins in the pads, housing on the board, latch to the notch.
+MODEL_3D = {"J13": ("${KIPRJMOD}/3d/436500415.stp", (90, 0, 0), (4.5, -2.0, 9.9))}
+
 link = json.load(open("sch_uuids.json"))
 for p in PARTS:
     lib, name = p["fp"].split(":")
@@ -170,6 +175,11 @@ for p in PARTS:
     fp.SetValue(p["value"])
     fp.SetField("Description", p["desc"])
     fp.SetPath(pcbnew.KIID_PATH("/" + link["parts"][p["ref"]]))
+    if p["ref"] in MODEL_3D:                         # manufacturer 3D model kept with the project (see README)
+        path, mrot, moff = MODEL_3D[p["ref"]]
+        for i in range(len(fp.Models())):            # index it: iterating gives copies, and changes are lost
+            m = fp.Models()[i]
+            m.m_Filename, m.m_Rotation, m.m_Offset = path, pcbnew.VECTOR3D(*mrot), pcbnew.VECTOR3D(*moff)
     x, y, rot = P[p["ref"]]
     fp.SetPosition(V(x, y))
     fp.SetOrientationDegrees(rot)

@@ -1295,15 +1295,15 @@
 			(uuid "82966a09-c20f-4c48-a1d7-8aafc72161ac")
 		)
 		(embedded_fonts no)
-		(model "${KICAD10_3DMODEL_DIR}/Connector_Molex.3dshapes/Molex_Micro-Fit_3.0_43650-0415_1x04_P3.00mm_Vertical.step"
+		(model "${KIPRJMOD}/3d/436500415.stp"
 			(offset
-				(xyz 0 0 0)
+				(xyz 4.5 -2 9.9)
 			)
 			(scale
 				(xyz 1 1 1)
 			)
 			(rotate
-				(xyz 0 0 0)
+				(xyz 90 0 0)
 			)
 		)
 	)
