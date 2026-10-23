@@ -641,6 +641,30 @@ the same as above.
 
 ## Installing on the Pi
 
+### Quick setup (one command)
+
+1. On your computer, flash **Raspberry Pi OS Lite (64-bit)** with **Raspberry Pi Imager**. Before writing,
+   open its settings (OS customisation) and set: hostname `bobcat-dash`, a username and password, your
+   **Wi-Fi**, and **enable SSH**. The Pi needs internet for the setup.
+2. Put the card in the Pi, power it up, wait a minute, then from your computer: `ssh YOURNAME@bobcat-dash.local`
+   (or plug in a keyboard and log in). Then:
+
+```bash
+sudo apt install -y git
+git clone https://github.com/ricsne2010/bobcat-dash.git
+sudo bash bobcat-dash/tools/setup-pi.sh            # add --fast-boot to also skip Bluetooth / waiting for Wi-Fi
+sudo reboot
+```
+
+   It does every step below for you: packages, I2C, 1-Wire temperatures, the speaker, the HDMI setting
+   (`--resolution 800x480` for another screen), the boot splash, the dash service, and the key-off shutdown
+   pieces (`--no-power-hold` for a hand-wired setup without the breakout board). It's safe to run again,
+   e.g. after `git pull` for a software update.
+3. After the reboot the splash shows and the dash starts by itself. Then [calibrate](#calibrating), name the
+   temperature sensors (`python3 dash.py --temps`), and [save a copy of the card](#backing-up-the-sd-card).
+
+### Step by step (what the script does)
+
 1. Flash **Raspberry Pi OS Lite (64-bit, Bookworm or newer)** with Raspberry Pi Imager. Set a
    username (the service file assumes `pi`), Wi-Fi, and SSH. Lite has no desktop, which makes it boot fast.
 2. Copy this folder to `/home/pi/bobcat-dash`, then:
@@ -706,6 +730,22 @@ sudo reboot
      copy `~/bobcat-dash-data` somewhere safe now and then: it holds the engine hours.
 5. **Monitor and boot splash:** force the HDMI output on, and install your boot picture. See
    [Monitor and boot splash](#monitor-and-boot-splash).
+
+### Backing up the SD card
+
+Once everything works (calibrated, sensors named), save the whole card as an image on your computer. If the
+card ever dies, write the image to a new card with Raspberry Pi Imager (*Use custom*) and you're back as you
+were, hours and all as of the backup. On a Mac:
+
+```bash
+diskutil list                                   # find the card, e.g. /dev/disk4 (check the size!)
+diskutil unmountDisk /dev/disk4
+sudo dd if=/dev/rdisk4 of=~/bobcat-dash-backup.img bs=4m status=progress
+gzip ~/bobcat-dash-backup.img                   # optional: much smaller
+```
+
+The image holds your Wi-Fi password: keep it private. The engine hours live in `~/bobcat-dash-data`; copy that
+folder off now and then too.
 
 ## Calibrating
 
@@ -845,6 +885,7 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `temps.py`: box and probe temperatures (DS18B20, 1-Wire), BOX HOT limits, `--temps`
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
 - `tools/bobcat-dash-keywatch` (+ `.service`): backstop that powers off 30 s after key-off if the dash isn't running
+- `tools/setup-pi.sh`: one-command setup of a fresh Raspberry Pi OS Lite card
 - `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff`
 - `tools/fit_splash.py`: fits your picture to the screen for the boot splash
 - `splash/`: the boot splash picture `splash.png` (1024×768), versions for 800×480 and 1280×720 displays, and the original logo
