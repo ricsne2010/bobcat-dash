@@ -71,6 +71,22 @@ for ref, (lib_id, value, fpid, pins, desc) in PARTS.items():
     fp.Reference().SetVisible(False)
     fp.Value().SetVisible(False)
 
+# copper-free rings under the brass standoffs and screw heads (no tracks, vias or ground fill), both sides
+import math
+for i, (hx, hy) in enumerate(HOLES):
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowZoneFills(True)
+    z.SetDoNotAllowPads(False); z.SetDoNotAllowFootprints(False)
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); ls.AddLayer(pcbnew.B_Cu); z.SetLayerSet(ls)
+    ol = z.Outline(); ol.NewOutline()
+    for k in range(32):
+        a = 2 * math.pi * k / 32
+        v = V(hx + 3.0 * math.cos(a), hy + 3.0 * math.sin(a))
+        ol.Append(v.x, v.y)
+    z.SetZoneName(f"standoff H{i + 1}")
+    board.Add(z)
+
 # outline, 1.5 mm corner radius
 r = 1.5
 

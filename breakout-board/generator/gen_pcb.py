@@ -25,13 +25,17 @@ def SZ(w, h):                            # a size, not a position: no TOP shift
 
 # ---------------------------------------------------------------- placement: ref -> (x, y, rotation)
 ADS_X = 123.0                        # ADS1115 module centre line (x)
-STEREO_X, STEREO_ROW = 21.5, -5.0      # stereo amp module centre line (x) and its header row (y), in the top strip
+STEREO_X, STEREO_ROW = 42.0, 26.0      # stereo amp module: centre line (x) and header row (y), beside the mono amp
+J1_X, J1_Y = 36.0, -17.5               # ribbon header (was 50, 11 before the top strip)
+LED_DX, LED_DY = J1_X - 50, J1_Y - 11 + 2.5  # power LEDs move with it (2.5 mm lower: room for its label)
+TILT_DX, TILT_DY = -18.0, -25.0        # TILT plug + resistors: top-left corner of the strip
 CONN_Y = H - 10.54                   # harness connectors: plug face flush with the bottom edge
 P = {
     # rev 2.2: H3 moved up like H4, so the row starts 5 mm further left and J5 can grow to 4 pins
     "J2": (8, CONN_Y, 0), "J3": (27, CONN_Y, 0), "J7": (41, CONN_Y, 0), "J5": (55, CONN_Y, 0),
     "J4": (79.1, CONN_Y, 0), "J6": (103, CONN_Y, 0), "J8": (117, CONN_Y, 0), "J11": (131, CONN_Y, 0),
-    "J1": (50, 11, 90), "J9": (8, 26, 90),
+    # rev 2.8: the ribbon header sits on the top edge (the ribbon goes straight up to the lid), power LEDs under it
+    "J1": (J1_X, J1_Y, 90), "J9": (8, 26, 90),
     # rev 2.8: ADS1115 (Adafruit 1085, STEMMA QT) plugs straight in: bottom row J10, top row J15, 12.7 mm apart
     "J10": (ADS_X - 6.35, 26, 90), "J15": (ADS_X - 6.35, 26 - 12.7, 90),
     # rev 2.8: amp boards. MONO (Adafruit 3006) on J9 as before: its two holes on its far edge, 13.97 mm above the
@@ -49,8 +53,10 @@ P = {
     "Q1": (31, 82, 0), "R20": (28, 74.5, 0), "R21": (28, 69, 0), "D25": (28, 88, 0),
     "R22": (28, 63.5, 0), "D26": (39.5, 63.5, 0),
     # power LEDs under the ribbon header
-    "R1": (45, 22, 0), "D2": (55, 22, 0), "R2": (60, 22, 0), "D3": (70, 22, 0),
-    "R3": (75, 22, 0), "D4": (85, 22, 0), "R4": (90, 22, 0), "D5": (100, 22, 0),
+    "R1": (45 + LED_DX, 22 + LED_DY, 0), "D2": (55 + LED_DX, 22 + LED_DY, 0),
+    "R2": (60 + LED_DX, 22 + LED_DY, 0), "D3": (70 + LED_DX, 22 + LED_DY, 0),
+    "R3": (75 + LED_DX, 22 + LED_DY, 0), "D4": (85 + LED_DX, 22 + LED_DY, 0),
+    "R4": (90 + LED_DX, 22 + LED_DY, 0), "D5": (100 + LED_DX, 22 + LED_DY, 0),
     # batt / fuel / aux / button block (right)
     "R32": (106, 44, 0), "R33": (106, 50.5, 0), "R34": (106, 57, 0), "R35": (106, 63.5, 0),
     "C2": (106, 70, 0), "D32": (106, 76.5, 0), "D33": (106, 83, 0),
@@ -60,7 +66,8 @@ P = {
     "R15": (47, 58, 0),
     # rev 2.5: TILT header (top-left corner, between the amp module and the ribbon header), its resistors below
     # rev 2.6: a latching Micro-Fit 3.0 instead of a pin header
-    "J13": (30.0, 4.4, 0), "R85": (30.0, 10.6, 270), "R83": (33.6, 10.6, 270), "R84": (37.2, 10.6, 270),
+    "J13": (30.0 + TILT_DX, 4.4 + TILT_DY, 0), "R85": (30.0 + TILT_DX, 10.6 + TILT_DY, 270),
+    "R83": (33.6 + TILT_DX, 10.6 + TILT_DY, 270), "R84": (37.2 + TILT_DX, 10.6 + TILT_DY, 270),
 }
 # optocoupler channels: one column each, lined up over their connectors
 for x0, name, u, i in [(47, "TACH", "U4", 4), (61, "OIL", "U1", 1)]:
@@ -85,6 +92,9 @@ for i in range(16):
     P[f"TP{i + 1}"] = (8 + i * 8.8, 34.5, 0)
 # H4 moves up from the corner (rev 2.1) to make room for the LIGHTS connector
 P.update({"H1": (4.5, 4.5 - TOP, 0), "H2": (157.5, 4.5 - TOP, 0), "H3": (4.5, 117.0, 0), "H4": (157.5, 117.0, 0)})
+# rev 2.8: extra M3 holes near the middle of each side, against vibration (top one beside the ribbon header)
+P.update({"H15": (94.0, 4.5 - TOP, 0), "H16": (72.2, 117.0, 0), "H17": (4.5, 62.0, 0), "H18": (157.5, 28.0, 0),
+          "H19": (70.0, 56.0, 0)})          # and one near the centre, where the board flexes most
 # rev 2.7: TEMPERATURE column on the new right-hand strip (x 150-162): probe connector, its resistors,
 # the board sensor and its pull-up, top to bottom
 P.update({"J14": (154.8, 38.0, 270), "R87": (153.6, 50.0, 270), "R88": (158.4, 50.0, 270),
@@ -235,6 +245,46 @@ for p in PARTS:
     if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16"):
         ref.SetVisible(False)
 
+# ---------------------------------------------------------------- copper-free rings under the standoffs
+# rev 2.8: brass standoffs, screw heads and washers must sit on bare board, never on a trace or the ground pour
+# (solder mask alone wears through under vibration). No tracks, vias or fill within these radii, both sides.
+import math as _math
+KEEPOUT_R = {"M3": 4.0, "M2.5": 3.0}
+for p in PARTS:
+    if not p["ref"].startswith("H"):
+        continue
+    hx, hy, _ = P[p["ref"]]
+    rk = KEEPOUT_R["M2.5" if p["value"] == "M2.5" else "M3"]
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True); z.SetDoNotAllowZoneFills(True)
+    z.SetDoNotAllowPads(False); z.SetDoNotAllowFootprints(False)
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); ls.AddLayer(pcbnew.B_Cu); z.SetLayerSet(ls)
+    ol = z.Outline(); ol.NewOutline()
+    for k in range(32):
+        a_ = 2 * _math.pi * k / 32
+        v = V(hx + rk * _math.cos(a_), hy + rk * _math.sin(a_))
+        ol.Append(v.x, v.y)
+    z.SetZoneName(f"standoff {p['ref']}")
+    board.Add(z)
+    # a hole near an edge: also keep the strip between it and that edge clear, so no track squeezes past
+    for x0, y0, x1, y1 in ((0, hy - rk, hx, hy + rk), (hx, hy - rk, W, hy + rk),
+                           (hx - rk, -TOP, hx + rk, hy), (hx - rk, hy, hx + rk, H)):
+        near = (x0 == 0 and hx - rk < 2) or (x1 == W and hx + rk > W - 2) or \
+               (y0 == -TOP and hy - rk < -TOP + 2) or (y1 == H and hy + rk > H - 2)
+        if not near:
+            continue
+        e = pcbnew.ZONE(board)
+        e.SetIsRuleArea(True)
+        e.SetDoNotAllowTracks(True); e.SetDoNotAllowVias(True); e.SetDoNotAllowZoneFills(True)
+        e.SetDoNotAllowPads(False); e.SetDoNotAllowFootprints(False)
+        e.SetLayerSet(ls)
+        o = e.Outline(); o.NewOutline()
+        for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+            v = V(x, y); o.Append(v.x, v.y)
+        e.SetZoneName(f"standoff {p['ref']} edge")
+        board.Add(e)
+
 # ---------------------------------------------------------------- outline (rounded rectangle)
 R_CORNER = 3.0
 
@@ -306,7 +356,7 @@ for i, lab in enumerate(TP_LABELS):
     silk(lab, x, y + 3.0, 0.85, bold=True)
 
 # power LED labels
-for led, lab in [("D2", "12V ON"), ("D3", "HORN/F2"), ("D4", "5V"), ("D5", "3V3")]:
+for led, lab in [("D2", "12V ON"), ("D3", "HORN/F2"), ("D4", "5V"), ("D5", "3V3")]:   # (moved with the LEDs)
     x, y, _ = P[led]
     silk(lab, x + 1.27, y + 3.6, 0.9, bold=True)
 # channel status LED labels
@@ -345,7 +395,7 @@ for i, lab in enumerate(["VIN", "GND", "SCL", "SDA", "ADDR", "ALRT"]):
     silk(lab, ADS_X - 6.35 + i * 2.54, 31.6, 0.8, align="left", angle=90)
 for i, lab in enumerate(["A+", "A3", "A2", "A1", "A0", "A-"]):
     silk(lab, ADS_X - 6.35 + i * 2.54, 10.0, 0.8, align="left", angle=90)
-silk("TO PI (40-pin ribbon)", 74, 1.9, 1.0, bold=True)
+silk("TO PI (40-pin ribbon)", J1_X + 24.0, J1_Y + 4.9, 1.0, bold=True)                # just under the header
 
 # fuel jumper table
 
@@ -373,8 +423,8 @@ silk("BOX", 156.0, 79.8, 0.8, bold=True)
 silk("SENSOR", 156.0, 81.4, 0.8, bold=True)
 # rev 2.5: TILT sensor header: pin names under the pins, title beside it
 for i, lab in enumerate(["GND", "3V3", "SDA", "SCL"]):
-    silk(lab, 30.0 + i * 3.0, 9.0, 0.8)
-silk("TILT SENSOR (I2C)", 33.6, 20.6, 0.9, bold=True)
+    silk(lab, 30.0 + TILT_DX + i * 3.0, 9.0 + TILT_DY, 0.8)
+silk("TILT SENSOR (I2C)", 33.6 + TILT_DX, 20.6 + TILT_DY, 0.9, bold=True)
 silk("Every LED: lit = signal present.  HYD FILT/TEMP LED blinking = wire broken", 46.0, 41.2, 0.8, align="left")
 silk("4.7k resistor across each HYD FILT/TEMP switch, at the switch", 46.0, 42.9, 0.8, align="left")
 
@@ -412,7 +462,7 @@ def rect(x1, y1, x2, y2):
     return [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
 
 
-group_box(rect(43.0, 16.9, 104.0, 26.9), "POWER LEDS", 73.5)
+group_box(rect(43.0 + LED_DX, 16.9 + LED_DY, 104.0 + LED_DX, 26.9 + LED_DY), "POWER LEDS", 73.5 + LED_DX)
 group_box(rect(3.0, 32.3, 146.5, 39.3), "TEST POINTS", 74.75)
 # the rest share edges, so each line is drawn once:
 #   inputs box | power box to its left, analog box to its right, lights box under the analog box's step,

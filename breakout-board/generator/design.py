@@ -269,6 +269,10 @@ for i in range(1, 5):
 for i in range(5, 9):
     part(f"H{i}", "Mechanical:MountingHole", "M2.5", FP_MH25, {}, "mech",
          "ADS1115 module standoff hole")
+# rev 2.8: more board mounting holes (M3), near the middle of each side, against vibration
+for i in range(15, 20):
+    part(f"H{i}", "Mechanical:MountingHole", "M3", FP_MH, {}, "mech",
+         "Mounting hole (middle of a side)" if i < 19 else "Mounting hole (near the centre)")
 # rev 2.8: amp board standoffs: H9-H10 mono (Adafruit 3006), H11-H14 stereo (Adafruit 6513)
 for i in range(9, 15):
     part(f"H{i}", "Mechanical:MountingHole", "M2.5", FP_MH25, {}, "mech",

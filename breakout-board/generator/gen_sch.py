@@ -709,8 +709,8 @@ def blk_flags(ox, oy):
 
 
 def blk_mech(ox, oy):
-    box(ox, oy, ox + 36.83, oy + 60, "MOUNTING", "H5-H8: ADS1115 standoffs. H9-H10: mono amp, H11-H14: stereo amp")
-    for i in range(14):
+    box(ox, oy, ox + 36.83, oy + 74, "MOUNTING", "H1-H4 corners, H15-H18 mid-sides, H19 centre. H5-H8: ADS1115, H9-H10: mono amp, H11-H14: stereo amp")
+    for i in range(19):
         place(f"H{i + 1}", ox + 6.35 + (i % 4) * 8.89, oy + 16.51 + (i // 4) * 12.7, ref_at=(0, -3.81, None),
               val_at=(0, 3.81, None))
 

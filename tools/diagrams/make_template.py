@@ -17,16 +17,18 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "brea
                    "mounting-template.pdf")
 
 BOARD_W, BOARD_H, CORNER = 162.0, 159.0, 3.0
-HOLES = [("H1", 4.5, 4.5), ("H2", 157.5, 4.5), ("H3", 4.5, 142.0), ("H4", 157.5, 142.0)]   # board mm, y down
+HOLES = [("H1", 4.5, 4.5), ("H2", 157.5, 4.5), ("H3", 4.5, 142.0), ("H4", 157.5, 142.0),   # board mm, y down
+         # rev 2.8: mid-side holes and one near the centre, against vibration
+         ("H15", 94.0, 4.5), ("H16", 72.2, 142.0), ("H17", 4.5, 87.0), ("H18", 157.5, 53.0), ("H19", 70.0, 81.0)]
 HOLE_D = 3.2
 # Connector footprints (board mm, x0, y0, x1, y1), for planning where the wires come and go.
 _Z = [   # rev 2.7 coordinates; rev 2.8 added a 25 mm strip on top, so they shift down 25 mm below
-    ("TO PI (ribbon)", 44.4, 4.7, 103.9, 14.7), ("TILT", 26.1, 1.4, 42.9, 8.2),
+    ("TO PI (ribbon)", 30.4, -23.8, 89.9, -13.8), ("TILT", 8.1, -23.6, 24.9, -16.8),
     ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 34.1, 157.8, 47.9),
     ("POWER", 3.9, 120.9, 22.3, 134.0), ("5V", 22.9, 120.9, 36.2, 134.0), ("HORN", 36.9, 120.9, 50.2, 134.0),
     ("TACH", 50.9, 120.9, 69.3, 134.0), ("SWITCHES", 75.0, 120.9, 98.4, 134.0), ("FUEL", 98.9, 120.9, 112.2, 134.0),
     ("SILENCE", 112.9, 120.9, 126.2, 134.0), ("LIGHTS", 126.9, 120.9, 145.3, 134.0),
-    ("MONO AMP", 6.0, 7.0, 26.0, 26.8), ("STEREO AMP", 8.8, -21.5, 34.2, -2.8), ("ADC", 110.3, 10.8, 135.7, 28.5),
+    ("MONO AMP", 6.0, 7.0, 26.0, 26.8), ("STEREO AMP", 29.3, 9.5, 54.7, 28.5), ("ADC", 110.3, 10.8, 135.7, 28.5),
 ]
 ZONES = [(n, a, b + 25.0, c, d + 25.0) for n, a, b, c, d in _Z]
 
@@ -161,7 +163,7 @@ def main():
     c.setStrokeGray(0)
     c.setFont("Helvetica-Oblique", 7)
     c.setFillGray(0.3)
-    lx, ly = P(BOARD_W / 2, BOARD_H - 18)
+    lx, ly = P(BOARD_W / 2, BOARD_H - 27)
     c.drawCentredString(lx, ly, "Harness plugs (Phoenix MSTB) all along this edge: wires leave DOWNWARD, toward the "
                                 "deep end of the box.")
     c.drawCentredString(lx, ly - 3.5 * mm, "Top edge ~10 mm below the inside top wall leaves ~40 mm (1-1/2\") below "
@@ -180,7 +182,12 @@ def main():
         c.circle(x, y, 0.35 * mm, stroke=0, fill=1)           # centre-punch here
         c.setFont("Helvetica-Bold", 7)
         dx = 4 * mm if hx < BOARD_W / 2 else -4 * mm
-        c.drawCentredString(x + dx * 1.6, y + (3.8 * mm if hy < 50 else -5.5 * mm), ref)
+        if ref == "H19":
+            c.drawString(x + 4 * mm, y - 1 * mm, "H19 (near centre)")
+        elif ref in ("H17", "H18"):
+            c.drawCentredString(x + dx * 1.8, y - 1 * mm, ref)
+        else:
+            c.drawCentredString(x + dx * 1.6, y + (3.8 * mm if hy < 50 else -5.5 * mm), ref)
 
     # Dimensions
     dim(c, 4.5, 142, 157.5, 142, "153.0 mm  (6.024\")  hole centre to hole centre", 23)
@@ -190,8 +197,8 @@ def main():
     c.setFont("Helvetica", 7)
     c.setFillGray(0.25)
     hx, hy = P(4.5, 95)
-    c.drawString(hx + 5 * mm, hy - 7.5 * mm, "holes 4.5 mm in from top/side edges;")
-    c.drawString(hx + 5 * mm, hy - 10.5 * mm, "bottom holes 17 mm up from the bottom edge")
+    c.drawString(hx + 5 * mm, hy - 7.5 * mm, "9 holes, all M3: 4 corners, 4 near the middle of each side, 1 near the centre.")
+    c.drawString(hx + 5 * mm, hy - 10.5 * mm, "Edge holes 4.5 mm in from the top/side edges; bottom row 17 mm up from the bottom edge.")
     c.setFillGray(0)
 
     # Check rulers + notes, below the board
@@ -206,10 +213,10 @@ def main():
         "~10 mm below the inside top wall.",
         "3) Centre-punch the dot in each hole.  Drill 1/8\" (3.2 mm) for M3 screws through the wall, or 2.5 mm to tap M3 "
         "into thick metal.",
-        "4) Mount on M3 standoffs (10 mm or taller): the board's back needs air and must not touch the metal box.  "
-        "Outer circle = ~6 mm standoff footprint.",
-        "Grey zones: plugs and modules.  Ribbon to the Pi straight up (keep the strip above it clear), COIL (high "
-        "voltage) left, TEMP PROBE right.",
+        "4) Mount on 9 M3 standoffs (10 mm or taller, all the same height): the board's back must not touch the box.  "
+        "Outer circle = ~6 mm standoff.",
+        "Grey zones: plugs and modules.  The Pi ribbon plugs in on the top edge and goes straight up to the lid; COIL "
+        "(high voltage) left, TEMP PROBE right.",
     ]
     c.setFont("Helvetica", 7.2)
     for i, t in enumerate(notes):

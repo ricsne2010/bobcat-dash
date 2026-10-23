@@ -94,7 +94,8 @@ SECTIONS = [
   (1, "Screw terminal blocks", "PCB 5 mm pitch assortment", "—", "—", "Field wiring into the enclosure"),
   (1, "Heat-shrink + terminals", "Assortment", "—", "—", "Lot"),
   (1, "Display mount", "RAM-style ball mount or bracket", "—", "—", "With vibration damping"),
-  (1, "Standoffs", "M2.5 nylon/brass set", "—", "—", "Mount Pi and boards"),
+  (1, "Standoffs", "M2.5 nylon/brass set", "—", "—", "Mount the Pi and the plug-in modules"),
+  (9, "M3 standoff + screws", "10 mm or taller, all the same height", "—", "Board README", "Breakout board mounting: 4 corners, 4 mid-sides, 1 centre (drilling template)"),
  ]),
  ("EXISTING MACHINE PARTS (reuse, check they work)", [
   (1, "Oil pressure switch", "Original, closes on low pressure", "—", "Sch. 5", "GPIO 22 via optocoupler"),
