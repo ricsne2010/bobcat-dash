@@ -169,8 +169,8 @@ for name in sorted(set(PIN_NET.values()), key=lambda n: "/" + _design_name.get(n
 # 43650-0415, CAD models) into kicad/3d/. It isn't in the repository (Molex's terms), so without it KiCad just
 # shows the pads. Rotation / offset found by rendering: pins in the pads, housing on the board, latch to the notch.
 MODEL_3D = {"J13": ("${KIPRJMOD}/3d/436500415.stp", (90, 0, 0), (4.5, -2.0, 9.9)),
-            # same Molex series, 3 pins (centre at 3.0 mm): download 43650-0315 the same way
-            "J14": ("${KIPRJMOD}/3d/436500315.stp", (90, 0, 0), (3.0, -2.0, 9.9))}
+            # same Molex series, 3 pins: download 43650-0315 the same way (its STEP origin sits elsewhere)
+            "J14": ("${KIPRJMOD}/3d/436500315.stp", (90, 0, 0), (0.0, 0.2, 9.9))}
 
 link = json.load(open("sch_uuids.json"))
 for p in PARTS:

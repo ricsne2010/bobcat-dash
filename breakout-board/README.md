@@ -187,16 +187,17 @@ Never fit JP2 in setup B. The gauge would back-feed the pull-up. It wouldn't dam
 
 ## 3D models
 
-KiCad's own library covers every part except the TILT connector (Molex Micro-Fit 3.0, 43650-0415): KiCad
-ships no Micro-Fit models. The project uses Molex's own STEP model, which isn't included here because Molex's
-terms don't clearly allow passing it on. To get it in the 3D viewer and renders:
+KiCad's own library covers every part except the TILT and TEMP PROBE connectors (Molex Micro-Fit 3.0,
+43650-0415 and 43650-0315): KiCad ships no Micro-Fit models. The pictures in `docs/` were rendered with Molex's
+own STEP models, but the STEP files themselves aren't included here because Molex's terms don't clearly allow
+passing them on. To get them in the 3D viewer and your own renders:
 
 1. On molex.com, search **43650-0415**, open **CAD Models** and download the **STEP** file (free; it may ask
    you to register). It's named `436500415.stp`.
 2. Put it in `kicad/3d/436500415.stp` (the folder is in `.gitignore`). For the TEMP PROBE connector, do the same
    for **43650-0315** (`436500315.stp`).
 
-The board already points to it, rotated and offset to sit on its pads. Without the file, KiCad just shows that
+The board already points to both, rotated and offset to sit on their pads. Without a file, KiCad just shows that
 connector's pads and outline; nothing else is affected (the 3D model isn't part of the Gerbers).
 
 ## Keeping the plugs in

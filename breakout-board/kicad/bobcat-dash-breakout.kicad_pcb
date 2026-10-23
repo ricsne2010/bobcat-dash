@@ -12228,7 +12228,7 @@
 		(embedded_fonts no)
 		(model "${KIPRJMOD}/3d/436500315.stp"
 			(offset
-				(xyz 3 -2 9.9)
+				(xyz 0 0.2 9.9)
 			)
 			(scale
 				(xyz 1 1 1)
