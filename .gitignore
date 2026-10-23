@@ -17,6 +17,10 @@ breakout-board/generator/drc.json
 breakout-board/generator/route.dsn
 breakout-board/generator/route.ses
 breakout-board/generator/*.kicad_sch
+breakout-board/adapter/generator/out/
+breakout-board/adapter/generator/route.dsn
+breakout-board/adapter/generator/route.ses
+breakout-board/adapter/kicad/*-backups/
 
 # diagram scripts: temporary PNGs (the published diagrams are the .jpg files at the top level)
 tools/diagrams/*.png

@@ -1,0 +1,4 @@
+"Refs","Value","Footprint","Qty","Description"
+"J1","TO BOARD J15","Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical","1","Male pins underneath, into the breakout board's J15 (A+ A3 A2 A1 A0 A-). A+ / A- not used"
+"J2","TO BOARD J10","Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical","1","Male pins underneath, into the breakout board's J10 (VIN GND SCL SDA ADDR ALRT)"
+"J3","ADS1115 10-PIN","Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical","1","Socket on top for a 10-pin ADS1115 board: VDD GND SCL SDA ADDR ALRT A0 A1 A2 A3"

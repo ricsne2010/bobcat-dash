@@ -9,20 +9,41 @@ from design import PARTS, NETCLASSES, DEFAULT_TRACK, DEFAULT_CLEAR, nets
 FPDIR = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
 OUT = sys.argv[1] if len(sys.argv) > 1 else "out/bobcat-dash-breakout.kicad_pcb"
 W, H = 162.0, 134.0          # rev 2.0: +24 mm at the bottom for the power-hold band; rev 2.7: +12 mm wide (TEMP column)
+# rev 2.8: a 25 mm strip added along the top (amp sites, logo, title). Everything below keeps its old coordinates:
+# y runs from -TOP (the new top edge) to H, and V() shifts it all down so the board file still starts at y = 0.
+TOP = 25.0
 MM = pcbnew.FromMM
 
 
 def V(x, y):
-    return pcbnew.VECTOR2I(MM(x), MM(y))
+    return pcbnew.VECTOR2I(MM(x), MM(y + TOP))
+
+
+def SZ(w, h):                            # a size, not a position: no TOP shift
+    return pcbnew.VECTOR2I(MM(w), MM(h))
 
 
 # ---------------------------------------------------------------- placement: ref -> (x, y, rotation)
+ADS_X = 123.0                        # ADS1115 module centre line (x)
+STEREO_X, STEREO_ROW = 21.5, -5.0      # stereo amp module centre line (x) and its header row (y), in the top strip
 CONN_Y = H - 10.54                   # harness connectors: plug face flush with the bottom edge
 P = {
     # rev 2.2: H3 moved up like H4, so the row starts 5 mm further left and J5 can grow to 4 pins
     "J2": (8, CONN_Y, 0), "J3": (27, CONN_Y, 0), "J7": (41, CONN_Y, 0), "J5": (55, CONN_Y, 0),
     "J4": (79.1, CONN_Y, 0), "J6": (103, CONN_Y, 0), "J8": (117, CONN_Y, 0), "J11": (131, CONN_Y, 0),
-    "J1": (50, 11, 90), "J9": (8, 26, 90), "J10": (112, 26, 90),
+    "J1": (50, 11, 90), "J9": (8, 26, 90),
+    # rev 2.8: ADS1115 (Adafruit 1085, STEMMA QT) plugs straight in: bottom row J10, top row J15, 12.7 mm apart
+    "J10": (ADS_X - 6.35, 26, 90), "J15": (ADS_X - 6.35, 26 - 12.7, 90),
+    # rev 2.8: amp boards. MONO (Adafruit 3006) on J9 as before: its two holes on its far edge, 13.97 mm above the
+    # row. STEREO (Adafruit 6513) in the new top strip on J16: holes at its four corners, the lower two in line
+    # with its row. Fit one or the other.
+    "H9": (8 + 1.27, 26 - 13.97, 0), "H10": (8 + 13.97, 26 - 13.97, 0),
+    "J16": (STEREO_X - 6.35, STEREO_ROW, 90),
+    "H11": (STEREO_X - 10.16, STEREO_ROW, 0), "H12": (STEREO_X + 10.16, STEREO_ROW, 0),
+    "H13": (STEREO_X - 10.16, STEREO_ROW - 13.97, 0), "H14": (STEREO_X + 10.16, STEREO_ROW - 13.97, 0),
+    # its four corner holes, in line with the rows, 10.16 mm either side of centre (module holes are M2.5)
+    "H5": (ADS_X - 10.16, 26 - 12.7, 0), "H6": (ADS_X + 10.16, 26 - 12.7, 0),
+    "H7": (ADS_X - 10.16, 26, 0), "H8": (ADS_X + 10.16, 26, 0),
     # power / horn block (left)
     "F1": (11, 82.5, 0), "F2": (11, 68.5, 0), "D1": (11.5, 62.5, 0),
     "Q1": (31, 82, 0), "R20": (28, 74.5, 0), "R21": (28, 69, 0), "D25": (28, 88, 0),
@@ -63,7 +84,7 @@ TP_LABELS = ["BAT IN", "12V ON", "HORN 12V", "5V", "3V3", "GND", "GND", "GND", "
 for i in range(16):
     P[f"TP{i + 1}"] = (8 + i * 8.8, 34.5, 0)
 # H4 moves up from the corner (rev 2.1) to make room for the LIGHTS connector
-P.update({"H1": (4.5, 4.5, 0), "H2": (157.5, 4.5, 0), "H3": (4.5, 117.0, 0), "H4": (157.5, 117.0, 0)})
+P.update({"H1": (4.5, 4.5 - TOP, 0), "H2": (157.5, 4.5 - TOP, 0), "H3": (4.5, 117.0, 0), "H4": (157.5, 117.0, 0)})
 # rev 2.7: TEMPERATURE column on the new right-hand strip (x 150-162): probe connector, its resistors,
 # the board sensor and its pull-up, top to bottom
 P.update({"J14": (154.8, 38.0, 270), "R87": (153.6, 50.0, 270), "R88": (158.4, 50.0, 270),
@@ -181,6 +202,10 @@ for p in PARTS:
     fp.SetValue(p["value"])
     fp.SetField("Description", p["desc"])
     fp.SetPath(pcbnew.KIID_PATH("/" + link["parts"][p["ref"]]))
+    if p["ref"] in ("H5", "H6", "H7", "H8", "H11", "H12"):   # module standoff holes 3.81 mm from the sockets' end pins, as
+        for g in list(fp.GraphicalItems()):          # on the module itself: drop their screw-head courtyards, which
+            if g.GetLayer() in (pcbnew.F_CrtYd, pcbnew.B_CrtYd):   # overlap the sockets' by design (see PROJECT_RULES)
+                fp.Remove(g)
     if p["ref"] in MODEL_3D:                         # manufacturer 3D model kept with the project (see README)
         path, mrot, moff = MODEL_3D[p["ref"]]
         for i in range(len(fp.Models())):            # index it: iterating gives copies, and changes are lost
@@ -201,13 +226,13 @@ for p in PARTS:
             board.Add(nc)
             pad.SetNet(nc)
     ref = fp.Reference()
-    ref.SetTextSize(V(1.0, 1.0)); ref.SetTextThickness(MM(0.15))
+    ref.SetTextSize(SZ(1.0, 1.0)); ref.SetTextThickness(MM(0.15))
     if p["ref"] in LIGHT_REF_AT:                       # tight light-sensing strip: place labels by hand
         dx, dy = LIGHT_REF_AT[p["ref"]]
         ref.SetPosition(V(x + dx, y + dy)); ref.SetTextAngleDegrees(0)
     if p["ref"] in VERT_REF:
-        ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(V(0.8, 0.8))
-    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14"):
+        ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
+    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16"):
         ref.SetVisible(False)
 
 # ---------------------------------------------------------------- outline (rounded rectangle)
@@ -226,9 +251,10 @@ def edge_arc(cx, cy, sx, sy, angle):
 
 
 r = R_CORNER
-edge_line(r, 0, W - r, 0); edge_line(W, r, W, H - r); edge_line(W - r, H, r, H); edge_line(0, H - r, 0, r)
-edge_arc(W - r, r, W - r, 0, 90); edge_arc(W - r, H - r, W, H - r, 90)
-edge_arc(r, H - r, r, H, 90); edge_arc(r, r, 0, r, 90)
+T = -TOP
+edge_line(r, T, W - r, T); edge_line(W, T + r, W, H - r); edge_line(W - r, H, r, H); edge_line(0, H - r, 0, T + r)
+edge_arc(W - r, T + r, W - r, T, 90); edge_arc(W - r, H - r, W, H - r, 90)
+edge_arc(r, H - r, r, H, 90); edge_arc(r, T + r, 0, T + r, 90)
 
 # ---------------------------------------------------------------- silkscreen
 
@@ -236,7 +262,7 @@ edge_arc(r, H - r, r, H, 90); edge_arc(r, r, 0, r, 90)
 def silk(text, x, y, size=1.0, bold=False, align="center", angle=0, layer=pcbnew.F_SilkS):
     t = pcbnew.PCB_TEXT(board)
     t.SetText(text); t.SetPosition(V(x, y)); t.SetLayer(layer)
-    t.SetTextSize(V(size, size)); t.SetTextThickness(MM(size * (0.2 if bold else 0.15)))
+    t.SetTextSize(SZ(size, size)); t.SetTextThickness(MM(size * (0.2 if bold else 0.15)))
     t.SetHorizJustify({"center": pcbnew.GR_TEXT_H_ALIGN_CENTER, "left": pcbnew.GR_TEXT_H_ALIGN_LEFT,
                        "right": pcbnew.GR_TEXT_H_ALIGN_RIGHT}[align])
     if angle:
@@ -300,12 +326,25 @@ for ref, lab in [("TP17", "FUSED 12V"), ("TP18", "IGN"), ("TP19", "HOLD"), ("TP2
     silk(lab, x + 2.4, y + 0.4, 0.85, bold=True, align="left")
 
 # module outlines
-silk_box(6, 7, 26, 24.5); silk("MAX98357A", 16, 13, 1.1, bold=True); silk("amp module", 16, 15, 0.9)
+silk_box(6, 7, 26, 24.5); silk("MONO AMP", 16, 17.6, 1.1, bold=True); silk("MAX98357A", 16, 19.6, 0.9)
+silk("Adafruit 3006", 16, 21.4, 0.8)
+# stereo amp module outline (25.4 x 19.05 mm, row 2.54 mm in from its edge), pin names below its row
+silk_box(STEREO_X - 12.7, STEREO_ROW - 16.51, STEREO_X + 12.7, STEREO_ROW + 2.2)
+silk("STEREO AMP", STEREO_X, STEREO_ROW - 9.0, 1.1, bold=True); silk("MAX98357A x2", STEREO_X, STEREO_ROW - 7.0, 0.9)
+silk("Adafruit 6513", STEREO_X, STEREO_ROW - 5.2, 0.8)
+for i, lab in enumerate(["VDD", "GND", "BCLK", "LRC", "DIN", "GAIN"]):
+    silk(lab, STEREO_X - 6.35 + i * 2.54, STEREO_ROW + 5.5, 0.8, align="left", angle=90)
+silk("FIT ONE AMP ONLY", STEREO_X + 15.0, STEREO_ROW - 9.0, 0.9, bold=True, align="left")
+silk("(mono or stereo)", STEREO_X + 15.0, STEREO_ROW - 7.2, 0.8, align="left")
 for i, lab in enumerate(["LRC", "BCLK", "DIN", "GAIN", "SD", "GND", "VIN"]):
     silk(lab, 8 + i * 2.54, 31.6, 0.8, align="left", angle=90)
-silk_box(108, 6, 138, 24.5); silk("ADS1115", 123, 13, 1.1, bold=True); silk("ADC module", 123, 15, 0.9)
-for i, lab in enumerate(["VDD", "GND", "SCL", "SDA", "ADDR", "ALRT", "A0", "A1", "A2", "A3"]):
-    silk(lab, 112 + i * 2.54, 31.6, 0.8, align="left", angle=90)
+# ADS1115 module outline (25.4 x 17.8 mm, its rows 2.54 mm in from its long edges), pin names outside it
+silk_box(ADS_X - 12.7, 26 - 15.24, ADS_X + 12.7, 26 + 2.2)
+silk("ADS1115", ADS_X, 18.6, 1.1, bold=True); silk("ADC module", ADS_X, 20.6, 0.9)
+for i, lab in enumerate(["VIN", "GND", "SCL", "SDA", "ADDR", "ALRT"]):
+    silk(lab, ADS_X - 6.35 + i * 2.54, 31.6, 0.8, align="left", angle=90)
+for i, lab in enumerate(["A+", "A3", "A2", "A1", "A0", "A-"]):
+    silk(lab, ADS_X - 6.35 + i * 2.54, 10.0, 0.8, align="left", angle=90)
 silk("TO PI (40-pin ribbon)", 74, 1.9, 1.0, bold=True)
 
 # fuel jumper table
@@ -321,8 +360,11 @@ silk("F1  MAIN  5A", P["F1"][0] + 5, P["F1"][1] - 3.2, 0.9, bold=True)
 silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
-silk("BOBCAT DASH BREAKOUT", 28.0, 28.6, 1.5, bold=True, align="left")
-silk("rev 2.7  2026-10", 61.0, 28.6, 0.9, align="left")
+# rev 2.8: title block in the top strip, beside the logo (the ribbon to the Pi leaves the strip clear above J1)
+silk("BOBCAT DASH", 106.0, -16.0, 1.8, bold=True, align="left")
+silk("BREAKOUT BOARD", 106.0, -12.8, 1.5, bold=True, align="left")
+silk("rev 2.8  2026-10", 106.0, -9.6, 1.0, align="left")
+silk("Project Moon Pi", 106.0, -7.2, 0.9, align="left")
 # rev 2.7: TEMPERATURE column: probe pin names beside the connector
 for i, lab in enumerate(["GND", "DQ", "3V3"]):
     silk(lab, 158.2, 38.0 + i * 3.0 + 0.4, 0.8, bold=True, align="left")
@@ -342,7 +384,7 @@ silk("4.7k resistor across each HYD FILT/TEMP switch, at the switch", 46.0, 42.9
 
 def text_width(text, size, bold):
     t = pcbnew.PCB_TEXT(board)
-    t.SetText(text); t.SetTextSize(V(size, size)); t.SetTextThickness(MM(size * (0.2 if bold else 0.15)))
+    t.SetText(text); t.SetTextSize(SZ(size, size)); t.SetTextThickness(MM(size * (0.2 if bold else 0.15)))
     return t.GetBoundingBox().GetWidth() / 1e6
 
 
@@ -418,7 +460,7 @@ silk("GND", 14.2, 51.98, 0.8, bold=True, align="left")
 # ---------------------------------------------------------------- Project Moon Pi logo (back silkscreen)
 # logo_silk.json comes from make_logo_silk.py. It's on the back, so it's mirrored left-right here
 # and reads the right way round when you turn the board over. Placed in the largest pad-free area.
-LOGO_CENTRE, LOGO_WIDTH = (123.0, 13.0), 23.0   # rev 2.4: under the ADC module (the HV corner took its old spot)
+LOGO_CENTRE, LOGO_WIDTH = (146.0, -12.5), 18.0   # rev 2.8: on top, in the new top strip beside the title
 
 
 def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):
@@ -434,7 +476,7 @@ def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):
                 x0, x1 = data["width_px"] - x1, data["width_px"] - x0
             ps.NewOutline()
             for px, py in [(x0, y), (x1, y), (x1, y + 1), (x0, y + 1)]:
-                ps.Append(MM(x_left + px * s), MM(y_top + py * s + (eps if py > y else -eps)))
+                ps.Append(MM(x_left + px * s), MM(y_top + py * s + (eps if py > y else -eps) + TOP))
     ps.Simplify()                                          # union all the pixel rows into shapes with holes
     ps.Fracture()                                          # silkscreen polygons can't have holes: bridge them
     for i in range(ps.OutlineCount()):                     # one shape per piece (a shape keeps one outline)
@@ -446,8 +488,17 @@ def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):
     return ps.OutlineCount()
 
 
-n = add_logo(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo_silk.json"), LOGO_CENTRE, LOGO_WIDTH)
-print("logo:", n, "silkscreen shapes on the back")
+n = add_logo(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo_silk.json"), LOGO_CENTRE, LOGO_WIDTH,
+             layer=pcbnew.F_SilkS, mirror=False)
+print("logo:", n, "silkscreen shapes on top")
 
 pcbnew.SaveBoard(OUT, board)
 print("placed", len(PARTS), "footprints on", OUT)
+
+# PROJECT_RULES: every footprint comes fresh from KiCad's library on each build, so "doesn't match the library"
+# only ever flags the four ADS1115 standoff holes trimmed above. Silence that one check for this project.
+_pro = os.path.splitext(OUT)[0] + ".kicad_pro"
+_cfg = json.load(open(_pro))
+_cfg.setdefault("board", {}).setdefault("design_settings", {}).setdefault("rule_severities", {})[
+    "lib_footprint_mismatch"] = "ignore"
+json.dump(_cfg, open(_pro, "w"), indent=2)

@@ -1,13 +1,13 @@
-# Bobcat Dash Breakout Board (rev 2.7)
+# Bobcat Dash Breakout Board (rev 2.8)
 
-A 162 × 134 mm, 2-layer, all through-hole PCB that sits between the machine's wiring harness and
+A 162 × 159 mm, 2-layer, all through-hole PCB that sits between the machine's wiring harness and
 the Raspberry Pi. Every harness wire lands on a labeled, unpluggable terminal. Every signal has a
 status LED or a test point, so you can find a fault with a multimeter and your eyes. Rev 2.0 adds a
 **power-hold circuit**: after key-off, the Pi saves the engine hours and shuts down cleanly before the
 board turns the power off. Rev 2.1 adds **light sensing**: the dash shows when the front, rear or work
 lights are switched on. Rev 2.2 adds a **coil tach input**: the RPM comes straight from the ignition coil, so no
 crank sensor is needed. Rev 2.4 gives the coil wire its own plug in a fenced-off **high-voltage corner**, and
-outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connector for the roll / pitch sensor; rev 2.6 makes it a latching Molex Micro-Fit. Rev 2.7 adds **temperature**: a sensor for the box's air and a latching connector for external probes.
+outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connector for the roll / pitch sensor; rev 2.6 makes it a latching Molex Micro-Fit. Rev 2.7 adds **temperature**: a sensor for the box's air and a latching connector for external probes. Rev 2.8 takes the current Adafruit ADS1115 board (two header rows) plugged straight in.
 
 ![Board](docs/board-top.png)
 
@@ -27,7 +27,7 @@ outlines every circuit block on the silkscreen. Rev 2.5 adds a **TILT** connecto
 | **Light sensing** (right side) | Three PC817 inputs, one per light: front, rear, work. Each takes a sense wire from the **lamp side** of a light switch (a few mA; the lamps' own current never comes through the board). A **yellow `FRONT` / `REAR` / `WORK` LED** lights while that light is on, and the dash shows a matching symbol. |
 | **Horn driver** | IRLZ44N MOSFET with a pull-down, so the horn stays off while the Pi boots. **Red `HORN ON` LED** shows when the Pi is switching it on. |
 | **Analog** | Battery divider (A0), fuel sender (A1), filter (A2) and temp (A3), all with Schottky clamps and filtering. All four ADC inputs are in use. |
-| **Modules** | Sockets for the ADS1115 ADC board and the MAX98357A amplifier board. The outlines show where each module sits. |
+| **Modules** | Sockets for the ADS1115 ADC board and the MAX98357A amplifier board. The outlines show where each module sits. **Amp: fit one of two.** The **mono** board (Adafruit **3006**) goes on **J9** (`LRC BCLK DIN GAIN SD GND VIN`), screwed down through **H9–H10** at its far edge. The **stereo** board (Adafruit **6513**, two MAX98357As) goes on **J16** in the top strip (`VDD GND BCLK LRC DIN GAIN`, no SD), screwed down through **H11–H14** at its corners. Same signals, same software; on the stereo board use the LEFT speaker output (or both). Never fit both: they'd share the same I2S lines. The ADS1115 (Adafruit **1085**, STEMMA QT version) plugs straight in on two 6-pin sockets 12.7 mm (0.5") apart: **J10** for its bottom row `VIN GND SCL SDA ADDR ALRT`, **J15** for its top row `A+ A3 A2 A1 A0 A-`. ADDR is grounded (address 0x48); A+ and A- are the module's own filtered analog supply (outputs) and are left open. Four M2.5 holes (**H5–H8**) line up with the module's corner holes so it can be screwed down on standoffs against vibration (see *Parts to buy*). |
 | **Test points** | 16 labeled test points in a strip: power rails, three GND loops for your meter's black lead, and every signal. Four more next to the power hold: `FUSED 12V`, `IGN`, `HOLD`, `TIMER`. |
 | **TILT connector** (rev 2.5, latching since 2.6, top-left corner) | J13, a **Molex Micro-Fit 3.0** 4-pin header (43650-0415) with a positive latch, for the machine-angle sensor (LSM6DSOX, Adafruit 4438), on the Pi's I2C bus with the ADS1115. Pins **1 GND, 2 3V3, 3 SDA, 4 SCL**. Cable side: housing 43645-0400 with four 43030-0007 crimp pins (22–24 AWG, ideally 4-core shielded); solder the other end straight into the sensor board (its STEMMA QT socket is friction-only). 100 Ω in SDA and SCL (R83, R84) protect the Pi's pins and soften noise on the cable; 47 Ω in the 3.3 V feed (R85) limits a shorted cable to ~70 mA, so the Pi's 3.3 V (which also feeds the ADS1115) stays up. Keep the cable under ~30–50 cm. |
 | **TEMPERATURE** (rev 2.7, right-hand column) | **U11**, a DS18B20 on the board, measures the box's air. **J14 TEMP PROBE**, a latching Molex Micro-Fit 3.0 3-pin (43650-0315), takes external waterproof DS18B20 probes: pins **1 GND, 2 DQ, 3 3V3**; several probes can share it. All on the Pi's 1-Wire bus (GPIO 4, pin 7), with a 4.7 kΩ pull-up (R86). 100 Ω in the probe data line (R87) and 47 Ω in its 3.3 V feed (R88) protect against a damaged probe cable. The board grew 12 mm wider for this column. |
@@ -49,7 +49,7 @@ The coil input (rev 2.2) uses the same tach pin as before (GPIO 17), so no new p
 | `fab/board-bom.csv` | Parts that solder onto the board, grouped by value. |
 | `docs/schematic.pdf` | Printable schematic (A2): every block drawn with real wires, boxed and named like the board's silkscreen blocks. |
 | `docs/mounting-template.pdf` | **Full-size (1:1) drilling template** for the 4 mounting holes, US Letter. Print at *Actual size* / 100 % and check its 100 mm and 6 in rulers before drilling (made by `tools/diagrams/make_template.py`). |
-| `docs/board-top.png`, `board-3d.png`, `board-bottom.png`, `board-logo.png` | Renders (`board-logo.png` is a close-up of the logo on the back). |
+| `docs/board-top.png`, `board-3d.png`, `board-bottom.png`, `board-logo.png` | Renders (`board-logo.png` is a close-up of the logo, top right since rev 2.8). |
 | `generator/` | Scripts that generate the KiCad files from one parts-and-connections list (`design.py`). See its README. |
 
 ## Verification done
@@ -94,12 +94,17 @@ Everything in `fab/board-bom.csv`, plus these mating and loose parts that aren't
 | 1 | 40-pin female–female IDC ribbon cable, 15–30 cm | The "GPIO extension" cable sold for Pi breakouts |
 | 2 | Jumper shunt, 2.54 mm | For JP1 / JP2 |
 | 4 | M3 standoff + screws | Mounting holes are M3 |
+| 2 or 4 (+ 2 screws each) | **M2.5 standoff, female–female**, for the amp board | Mono: 2 (H9–H10). Stereo: 4 (H11–H14). Same height rule as the ADC: socket height + the board's header plastic, measured with it seated (about 11 mm with standard parts). |
+| 4 + 8 | **M2.5 standoff, 11 mm, female–female** + M2.5 × 5 mm screws | Hold the ADS1115 module down (H5–H8). 11 mm = a standard 8.5 mm female socket + the module's 2.5 mm header plastic: measure yours with the module seated and match it. The standoffs sit right beside the sockets, so use round ones, or 5 mm hex turned flat-side to the socket. Nylon is fine; a drop of thread locker on the metal screws. |
 
 Generic "2EDG" 5.08 mm pluggable terminals usually fit the same footprint. Check the pin
 pitch and pin diameter (about 1 mm) against the datasheet before ordering a large batch.
 
 **Check your modules against the silkscreen:** the sockets are wired for the Adafruit pin order:
-ADS1115 `VDD GND SCL SDA ADDR ALRT A0 A1 A2 A3`, MAX98357A `LRC BCLK DIN GAIN SD GND VIN`.
+ADS1115 (two rows) `VIN GND SCL SDA ADDR ALRT` and `A+ A3 A2 A1 A0 A-`, MAX98357A mono (J9) `LRC BCLK DIN GAIN SD GND VIN`,
+MAX98357A stereo (J16) `VDD GND BCLK LRC DIN GAIN`.
+The ADS1115 sockets fit the current Adafruit 1085 (STEMMA QT, two rows). The older Adafruit board and most
+clones have a single 10-pin row and won't plug in directly: use the small **[ADS1115 adapter](adapter/README.md)** board.
 Most clones match, but some don't. The pin names are printed next to each socket, so compare them
 with the labels on your module before plugging it in.
 
@@ -143,7 +148,7 @@ Use a bench supply set to 12 V with a **current limit around 0.3 A**, or a 12 V 
    - `TACH`: touch `SIG` to `GND`. The yellow `TACH` LED lights.
    - The hydraulic `FILT` and `TEMP` inputs need the Pi (their LEDs are driven by it), so they're tested in step 6.
    Leave `IGN` connected to `BAT+` for the remaining steps, unless a step says otherwise.
-3. Power off. Fit the ADS1115 and MAX98357A modules, set the fuel jumpers (below), and connect the ribbon to the Pi.
+3. Power off. Fit the ADS1115 and **one** MAX98357A board (mono on J9 or stereo on J16), set the fuel jumpers (below), and connect the ribbon to the Pi.
 4. Power on. The green `5V` and `3V3` LEDs light once the Pi is powered. After the Pi has booted
    (with `gpio=26=op,dh` in its `config.txt`), the green `HOLD` LED is on too. Stop the dash service and run
    `python3 dash.py --calibrate`: the battery reading should match your meter, TP `BATT` should read
@@ -354,5 +359,6 @@ instructions, wiring sketch and multimeter checks are in the main
 | 2.3 | Silkscreen only, no circuit change: `LIGHTS ON` heading over the FRONT / REAR / WORK LEDs, JP1 pins numbered 1-2-3, fuel table says `B gauge + dash`, test point `F1 OUT` renamed `FUSED 12V`. D45 moved down 2 mm so its label and cathode `K` no longer crowd the `FUEL` test point label. |
 | 2.4 | Test points `GATE` → `HORN CTRL` and `HORN` → `HORN 12V`. **High-voltage corner:** the coil input gets its own 2-pin plug **J12 COIL** (COIL, GND) on the left edge; TACH J5 goes back to 3 pins (Hall sensor only). J12, R80, R81, D45 and C11 sit together in a corner with a double outline, warning triangles and `HIGH VOLTAGE - IGNITION COIL`; the coil trace is now under 15 mm long instead of crossing the board. **Circuit outlines** with names around every block. Title moved above the test points; notes moved to the middle. Logo moved behind the ADC module (23 mm). D1 down 1.5 mm. **R15 (tach pull-up) 4.7 kΩ → 10 kΩ**: the optocouplers need half the current to pull GPIO 17 low, so a worn or hot PC817 still reads the coil reliably on a 12 V system. |
 | 2.5 | **TILT header** J13 (GND, 3V3, SDA, SCL) for the roll / pitch sensor, top-left corner, with R83 / R84 (100 Ω, SDA / SCL) and R85 (47 Ω, sensor 3.3 V). Schematic: new TILT SENSOR HEADER block. |
+| 2.8 | **Board 25 mm taller (162 × 159 mm)**: a new strip along the top holds the **stereo amp** site (J16, Adafruit 6513, with corner holes H11–H14), the board title and the **Project Moon Pi logo, now on top**. The mono amp (J9) keeps its place and gets standoff holes H9–H10. Top mounting holes H1/H2 moved to the new top corners: hole spacing 153 × 137.5 mm (new drilling template). **ADS1115 plugs straight in:** the current Adafruit 1085 (STEMMA QT) has two 6-pin rows 12.7 mm apart, so the single 10-pin socket became **J10** (VIN GND SCL SDA ADDR ALRT) and **J15** (A+ A3 A2 A1 A0 A-). Same signals and address; no software change. Four M2.5 holes (H5–H8) under the module's corner holes for standoffs. |
 | 2.7 | **Temperature:** DS18B20 U11 on the board (box air), latching 3-pin Micro-Fit **J14 TEMP PROBE** for external DS18B20 probes, R86 4.7 kΩ pull-up, R87 100 Ω / R88 47 Ω probe protection, on GPIO 4 (Pi pin 7). New TEMP column on the right edge: the board is **12 mm wider (162 × 134 mm)**; mounting holes H2 / H4 moved 12 mm right. |
 | 2.6 | J13 TILT becomes a **latching Molex Micro-Fit 3.0** (43650-0415) instead of a bare pin header, so vibration can't shake it loose; resistors moved down to fit. Harness connectors stay Phoenix MSTB (they take the 14–16 AWG harness wire); secure them externally (see *Keeping the plugs in*). |

@@ -16,7 +16,7 @@ from collections import defaultdict
 
 import sexpr
 from sexpr import Sym, find, first
-from design import PARTS, FP_TP, FP_MH
+from design import PARTS, FP_TP, FP_MH, FP_MH25
 
 SYMDIR = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols"
 PROJECT = "bobcat-dash-breakout"
@@ -141,7 +141,7 @@ def place(ref, x, y, rot=0, mirror=False, ref_at=None, val_at=None, value=None, 
         node.append([Sym("mirror"), Sym("y")])
     hide = not fields
     node += [[Sym("unit"), 1], [Sym("exclude_from_sim"), Sym("no")],
-             [Sym("in_bom"), Sym("no") if (p is None or fp in (FP_TP, FP_MH, None)) else Sym("yes")],
+             [Sym("in_bom"), Sym("no") if (p is None or fp in (FP_TP, FP_MH, FP_MH25, None)) else Sym("yes")],
              [Sym("on_board"), Sym("yes") if fp else Sym("no")], [Sym("dnp"), Sym("no")], U(),
              [Sym("property"), "Reference", ref, [Sym("at"), R4(rpos[0]), R4(rpos[1]), fang],
               eff(1.27, hide or ref.startswith("#"))],
@@ -606,8 +606,9 @@ def blk_pi(ox, oy):
 
 
 def blk_modules(ox, oy):
-    box(ox, oy, ox + 92, oy + 62, "PLUG-IN MODULES")
-    for ref, x, y in (("J10", ox + 25.4, oy + 30.48), ("J9", ox + 66.04, oy + 30.48)):
+    box(ox, oy, ox + 106, oy + 66, "PLUG-IN MODULES")
+    for ref, x, y in (("J10", ox + 17.78, oy + 30.48), ("J15", ox + 43.18, oy + 30.48), ("J9", ox + 71.12, oy + 30.48),
+                      ("J16", ox + 99.06, oy + 30.48)):
         place(ref, x, y, ref_at=(2.54, -15.24, None), val_at=(2.54, 16.51, None))
         for n, net in PART[ref]["pins"].items():
             if net is None:
@@ -619,8 +620,11 @@ def blk_modules(ox, oy):
                 pwr(net, b, side="left")
             else:
                 gl(net, b, 180)
-    text("J10: ADS1115 (VDD GND SCL SDA ADDR ALRT A0-A3)", ox + 2.54, oy + 56.0, 1.27)
-    text("J9: MAX98357A (LRC BCLK DIN GAIN SD GND VIN)", ox + 2.54, oy + 58.6, 1.27)
+    text("J10 + J15: ADS1115 (Adafruit 1085, two rows 12.7 mm apart)", ox + 2.54, oy + 50.8, 1.27)
+    text("  J10 VIN GND SCL SDA ADDR ALRT;  J15 A+ A3 A2 A1 A0 A-", ox + 2.54, oy + 53.4, 1.27)
+    text("  A+ / A- are the module's own analog supply (outputs): left open", ox + 2.54, oy + 56.0, 1.27)
+    text("J9: MONO amp, Adafruit 3006 (LRC BCLK DIN GAIN SD GND VIN);  J16: STEREO amp, Adafruit 6513", ox + 2.54, oy + 58.6, 1.27)
+    text("  (VDD GND BCLK LRC DIN GAIN). Same signals: fit one amp only", ox + 2.54, oy + 61.2, 1.27)
 
 
 def blk_tilt(ox, oy):
@@ -705,9 +709,10 @@ def blk_flags(ox, oy):
 
 
 def blk_mech(ox, oy):
-    box(ox, oy, ox + 36.83, oy + 20, "MOUNTING")
-    for i in range(4):
-        place(f"H{i + 1}", ox + 6.35 + i * 8.89, oy + 13.97, ref_at=(0, -3.81, None), val_at=(0, 3.81, None))
+    box(ox, oy, ox + 36.83, oy + 60, "MOUNTING", "H5-H8: ADS1115 standoffs. H9-H10: mono amp, H11-H14: stereo amp")
+    for i in range(14):
+        place(f"H{i + 1}", ox + 6.35 + (i % 4) * 8.89, oy + 16.51 + (i // 4) * 12.7, ref_at=(0, -3.81, None),
+              val_at=(0, 3.81, None))
 
 
 # ---------------------------------------------------------------- sheet layout (A2: 594 x 420 mm)
@@ -873,7 +878,7 @@ for a, b in segs:
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
        [Sym("title_block"), [Sym("title"), "Bobcat Digital Dash - Breakout Board"], [Sym("date"), "2026-10-22"],
-        [Sym("rev"), "2.7"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
+        [Sym("rev"), "2.8"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \
       [[Sym("sheet_instances"), [Sym("path"), "/", [Sym("page"), "1"]]], [Sym("embedded_fonts"), Sym("no")]]

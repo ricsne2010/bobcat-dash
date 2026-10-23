@@ -1,4 +1,4 @@
-"""Printable 1:1 drilling template for the breakout board (rev 2.7, 162 x 134 mm).
+"""Printable 1:1 drilling template for the breakout board (rev 2.8, 162 x 159 mm).
 
     pip install reportlab
     python3 make_template.py        -> ../../breakout-board/docs/mounting-template.pdf
@@ -16,21 +16,23 @@ from reportlab.pdfgen import canvas
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "breakout-board", "docs",
                    "mounting-template.pdf")
 
-BOARD_W, BOARD_H, CORNER = 162.0, 134.0, 3.0
-HOLES = [("H1", 4.5, 4.5), ("H2", 157.5, 4.5), ("H3", 4.5, 117.0), ("H4", 157.5, 117.0)]   # board mm, y down
+BOARD_W, BOARD_H, CORNER = 162.0, 159.0, 3.0
+HOLES = [("H1", 4.5, 4.5), ("H2", 157.5, 4.5), ("H3", 4.5, 142.0), ("H4", 157.5, 142.0)]   # board mm, y down
 HOLE_D = 3.2
 # Connector footprints (board mm, x0, y0, x1, y1), for planning where the wires come and go.
-ZONES = [
+_Z = [   # rev 2.7 coordinates; rev 2.8 added a 25 mm strip on top, so they shift down 25 mm below
     ("TO PI (ribbon)", 44.4, 4.7, 103.9, 14.7), ("TILT", 26.1, 1.4, 42.9, 8.2),
     ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 34.1, 157.8, 47.9),
     ("POWER", 3.9, 120.9, 22.3, 134.0), ("5V", 22.9, 120.9, 36.2, 134.0), ("HORN", 36.9, 120.9, 50.2, 134.0),
     ("TACH", 50.9, 120.9, 69.3, 134.0), ("SWITCHES", 75.0, 120.9, 98.4, 134.0), ("FUEL", 98.9, 120.9, 112.2, 134.0),
     ("SILENCE", 112.9, 120.9, 126.2, 134.0), ("LIGHTS", 126.9, 120.9, 145.3, 134.0),
+    ("MONO AMP", 6.0, 7.0, 26.0, 26.8), ("STEREO AMP", 8.8, -21.5, 34.2, -2.8), ("ADC", 110.3, 10.8, 135.7, 28.5),
 ]
+ZONES = [(n, a, b + 25.0, c, d + 25.0) for n, a, b, c, d in _Z]
 
 PAGE_W, PAGE_H = letter
 OX = (PAGE_W / mm - BOARD_W) / 2          # board's top-left corner on the page, mm
-OY_TOP = 38.0                             # mm down from the top of the page
+OY_TOP = 33.0                             # mm down from the top of the page
 
 
 def P(x, y):
@@ -104,19 +106,19 @@ def main():
 
     # Heading
     c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(PAGE_W / 2, PAGE_H - 13 * mm, "BREAKOUT BOARD DRILLING TEMPLATE  -  FULL SIZE 1:1")
+    c.drawCentredString(PAGE_W / 2, PAGE_H - 11 * mm, "BREAKOUT BOARD DRILLING TEMPLATE  -  FULL SIZE 1:1")
     c.setFont("Helvetica", 8.5)
-    c.drawCentredString(PAGE_W / 2, PAGE_H - 18.5 * mm,
+    c.drawCentredString(PAGE_W / 2, PAGE_H - 15.5 * mm,
                         "Print on US Letter at \"Actual size\" / 100 %  (NOT \"Fit\", \"Shrink oversized pages\" or "
                         "\"Scale to fit\").  Check both rulers before drilling.")
-    c.drawCentredString(PAGE_W / 2, PAGE_H - 22.5 * mm,
-                        "Board rev 2.7, 162 x 134 mm.  Viewed from the FRONT (parts side): tape it to the box's back "
-                        "wall as you'll see the board.")
+    c.drawCentredString(PAGE_W / 2, PAGE_H - 19 * mm,
+                        "Board rev 2.8, 162 x 159 mm (6.378 x 6.260 in).  Viewed from the FRONT (parts side): tape it to "
+                        "the box's back wall as you'll see the board.")
 
     # TOP marker
     c.setFont("Helvetica-Bold", 10)
     tx, ty = P(BOARD_W / 2, 0)
-    c.drawCentredString(tx, ty + 9 * mm, "TOP OF BOX  (narrow, 2\" deep end)")
+    c.drawCentredString(tx, ty + 8.5 * mm, "TOP OF BOX  (narrow end)   -   top edge about 10 mm below the inside top wall")
     c.setLineWidth(0.8)
     c.line(tx, ty + 3 * mm, tx, ty + 7.5 * mm)
     c.line(tx, ty + 7.5 * mm, tx - 1.5 * mm, ty + 5.5 * mm)
@@ -162,8 +164,8 @@ def main():
     lx, ly = P(BOARD_W / 2, BOARD_H - 18)
     c.drawCentredString(lx, ly, "Harness plugs (Phoenix MSTB) all along this edge: wires leave DOWNWARD, toward the "
                                 "deep end of the box.")
-    c.drawCentredString(lx, ly - 3.5 * mm, "Centred in the 8\" box this leaves ~35 mm (1-3/8\") below the board "
-                                           "for plugs, wire bends and tie-downs.")
+    c.drawCentredString(lx, ly - 3.5 * mm, "Top edge ~10 mm below the inside top wall leaves ~40 mm (1-1/2\") below "
+                                           "the board for plugs, wire bends and tie-downs.")
     c.setFillGray(0)
 
     # Mounting holes: crosshair, 3.2 mm circle, centre dot, label
@@ -181,38 +183,37 @@ def main():
         c.drawCentredString(x + dx * 1.6, y + (3.8 * mm if hy < 50 else -5.5 * mm), ref)
 
     # Dimensions
-    dim(c, 4.5, 117, 157.5, 117, "153.0 mm  (6.024\")  hole centre to hole centre", 22)
-    dim(c, 0, BOARD_H, BOARD_W, BOARD_H, "162.0 mm  (6.378\")  board width", 14)
-    dim(c, 157.5, 4.5, 157.5, 117, "112.5 mm  (4.429\")  hole centres", 12)
-    dim(c, 0, 0, 0, BOARD_H, "134.0 mm  (5.276\")  board height", -11)
+    dim(c, 4.5, 142, 157.5, 142, "153.0 mm  (6.024\")  hole centre to hole centre", 23)
+    dim(c, 157.5, 4.5, 157.5, 142, "137.5 mm  (5.413\")  hole centres", 12)
+    dim(c, 0, 0, 0, BOARD_H, "159.0 mm  (6.260\")  board height", -11)
 
     c.setFont("Helvetica", 7)
     c.setFillGray(0.25)
-    hx, hy = P(4.5, 70)
+    hx, hy = P(4.5, 95)
     c.drawString(hx + 5 * mm, hy - 7.5 * mm, "holes 4.5 mm in from top/side edges;")
     c.drawString(hx + 5 * mm, hy - 10.5 * mm, "bottom holes 17 mm up from the bottom edge")
     c.setFillGray(0)
 
     # Check rulers + notes, below the board
-    base = (PAGE_H / mm) - OY_TOP - BOARD_H - 33
+    base = (PAGE_H / mm) - OY_TOP - BOARD_H - 22
     ruler_mm(c, 15, base)
     ruler_in(c, 15, base - 15)
 
     notes = [
         "Before drilling:  1) Both rulers must measure exactly.  Also check 153.0 mm between the H1 and H2 hole centres.  "
         "If anything is off, reprint at Actual size.",
-        "2) Tape the sheet flat on the box's back wall, TOP toward the narrow end.  Keep the board centre near the box "
-        "centre so the 2\"-deep end clears the parts.",
+        "2) Tape the sheet flat on the box's back wall, TOP toward the narrow end, centred left-right, its top edge "
+        "~10 mm below the inside top wall.",
         "3) Centre-punch the dot in each hole.  Drill 1/8\" (3.2 mm) for M3 screws through the wall, or 2.5 mm to tap M3 "
         "into thick metal.",
         "4) Mount on M3 standoffs (10 mm or taller): the board's back needs air and must not touch the metal box.  "
         "Outer circle = ~6 mm standoff footprint.",
-        "Grey zones show where each plug sits, to plan cable entry:  ribbon to the Pi + TILT at the top, COIL (high "
-        "voltage) on the left, TEMP PROBE on the right.",
+        "Grey zones: plugs and modules.  Ribbon to the Pi straight up (keep the strip above it clear), COIL (high "
+        "voltage) left, TEMP PROBE right.",
     ]
     c.setFont("Helvetica", 7.2)
     for i, t in enumerate(notes):
-        c.drawString(12 * mm, (base - 27 - i * 4.2) * mm, t)
+        c.drawString(12 * mm, (base - 26 - i * 4.0) * mm, t)
 
     c.setFont("Helvetica", 6)
     c.setFillGray(0.45)

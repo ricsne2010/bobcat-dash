@@ -9,7 +9,7 @@ python3 gen_sch.py
 rm -rf out && mkdir out && cp bobcat-dash-breakout.kicad_sch out/
 $K sch export netlist --format kicadsexpr -o out/netlist.net out/bobcat-dash-breakout.kicad_sch 2>&1 | grep -v -i -E "$F" || true
 $KPY gen_pcb.py out/bobcat-dash-breakout.kicad_pcb 2>&1 | grep -v -i -E "$F" || true
-$KPY route.py out/bobcat-dash-breakout.kicad_pcb 2>&1 | grep -E "exit|completed|routed" || true
+$KPY route.py out/bobcat-dash-breakout.kicad_pcb 2>&1 | grep --line-buffered -E "exit|completed|routed" || true
 $KPY fix_thermals.py out/bobcat-dash-breakout.kicad_pcb 2>&1 | grep -v -i -E "$F" || true
 $K sch erc -o out/erc.rpt out/bobcat-dash-breakout.kicad_sch 2>&1 | grep -i violation
 $K pcb drc --schematic-parity --format json -o drc.json out/bobcat-dash-breakout.kicad_pcb >/dev/null 2>&1 || true

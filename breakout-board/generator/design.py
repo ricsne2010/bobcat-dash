@@ -13,6 +13,7 @@ FP_FUSE = "Fuse:Fuseholder_Blade_Mini_Keystone_3568"
 FP_TP = "TestPoint:TestPoint_THTPad_D2.0mm_Drill1.0mm"
 FP_TP_GND = "TestPoint:TestPoint_Keystone_5005-5009_Compact"
 FP_MH = "MountingHole:MountingHole_3.2mm_M3"
+FP_MH25 = "MountingHole:MountingHole_2.7mm_M2.5"
 FP_TO92 = "Package_TO_SOT_THT:TO-92_Inline_Wide"
 FP_CP = "Capacitor_THT:CP_Radial_D5.0mm_P2.00mm"
 FP_DIP16 = "Package_DIP:DIP-16_W7.62mm"
@@ -62,12 +63,21 @@ part("J11", "Connector_Generic:Conn_01x03", "LIGHTS", mstb(3), {1: "LT_FRONT", 2
      "Sense wires from the lamp side of the front / rear / work light switches (a few mA each)")
 
 # ---------------------------------------------------------------- plug-in modules
-part("J9", "Connector_Generic:Conn_01x07", "MAX98357A", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
+part("J9", "Connector_Generic:Conn_01x07", "MAX98357A MONO", "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical",
      {1: "I2S_LRC", 2: "I2S_BCLK", 3: "I2S_DIN", 4: None, 5: None, 6: "GND", 7: "+5V"}, "audio",
-     "Socket for MAX98357A I2S amp board: LRC BCLK DIN GAIN SD GND VIN")
-part("J10", "Connector_Generic:Conn_01x10", "ADS1115", "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
-     {1: "+3V3", 2: "GND", 3: "SCL", 4: "SDA", 5: "GND", 6: None, 7: "BATT_ADC", 8: "FUEL_ADC", 9: "FILT_ADC", 10: "TEMP_ADC"}, "adc",
-     "Socket for ADS1115 board: VDD GND SCL SDA ADDR ALRT A0 A1 A2 A3")
+     "Socket for the mono MAX98357A I2S amp board (Adafruit 3006): LRC BCLK DIN GAIN SD GND VIN")
+# rev 2.8: or the stereo board (Adafruit 6513, two MAX98357As): different pin order, no SD. Fit one amp only.
+part("J16", "Connector_Generic:Conn_01x06", "MAX98357A STEREO", "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
+     {1: "+5V", 2: "GND", 3: "I2S_BCLK", 4: "I2S_LRC", 5: "I2S_DIN", 6: None}, "audio",
+     "Socket for the stereo MAX98357A amp board (Adafruit 6513): VDD GND BCLK LRC DIN GAIN. Fit J9 or J16, not both")
+# rev 2.8: the current Adafruit ADS1115 (1085, STEMMA QT version) has two 6-pin rows 12.7 mm (0.5") apart, so it
+# gets two sockets and plugs straight in. A+ / A- are the module's filtered analog supply: outputs, left open.
+part("J10", "Connector_Generic:Conn_01x06", "ADS1115 PWR/I2C", "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
+     {1: "+3V3", 2: "GND", 3: "SCL", 4: "SDA", 5: "GND", 6: None}, "adc",
+     "Socket for the ADS1115 board's bottom row: VIN GND SCL SDA ADDR ALRT (ADDR to GND: address 0x48)")
+part("J15", "Connector_Generic:Conn_01x06", "ADS1115 INPUTS", "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
+     {1: None, 2: "TEMP_ADC", 3: "FILT_ADC", 4: "FUEL_ADC", 5: "BATT_ADC", 6: None}, "adc",
+     "Socket for the ADS1115 board's top row: A+ A3 A2 A1 A0 A-")
 
 # ---------------------------------------------------------------- power, fuses, protection, power LEDs
 part("F1", "Device:Fuse", "5A", FP_FUSE, {1: "+12V_IN", 2: "+12V_BAT"}, "power", "Mini blade fuse: main feed")
@@ -255,6 +265,14 @@ for i, n in enumerate(TPS, 1):
 
 for i in range(1, 5):
     part(f"H{i}", "Mechanical:MountingHole", "M3", FP_MH, {}, "mech", "Mounting hole")
+# rev 2.8: the ADS1115 module's four corner holes (M2.5), so it can be screwed down on 11 mm standoffs
+for i in range(5, 9):
+    part(f"H{i}", "Mechanical:MountingHole", "M2.5", FP_MH25, {}, "mech",
+         "ADS1115 module standoff hole")
+# rev 2.8: amp board standoffs: H9-H10 mono (Adafruit 3006), H11-H14 stereo (Adafruit 6513)
+for i in range(9, 15):
+    part(f"H{i}", "Mechanical:MountingHole", "M2.5", FP_MH25, {}, "mech",
+         "Mono amp board standoff hole" if i < 11 else "Stereo amp board standoff hole")
 
 # Net classes: (track width mm, clearance mm)
 NETCLASSES = {
