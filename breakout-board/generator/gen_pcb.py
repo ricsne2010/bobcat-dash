@@ -37,6 +37,9 @@ P = {
     "R40": (119, 76.5, 0), "C3": (119, 83, 0),
     "JP1": (133, 44, 0), "JP2": (139, 44, 0),
     "R15": (47, 58, 0),
+    # rev 2.5: TILT header (top-left corner, between the amp module and the ribbon header), its resistors below
+    # rev 2.6: a latching Micro-Fit 3.0 instead of a pin header
+    "J13": (30.0, 4.4, 0), "R85": (30.0, 10.6, 270), "R83": (33.6, 10.6, 270), "R84": (37.2, 10.6, 270),
 }
 # optocoupler channels: one column each, lined up over their connectors
 for x0, name, u, i in [(47, "TACH", "U4", 4), (61, "OIL", "U1", 1)]:
@@ -108,6 +111,7 @@ LIGHT_REF_AT = {}
 for u, r, led, dz in [("U7", "R17", "D18", "D28"), ("U8", "R18", "D19", "D29"), ("U9", "R19", "D20", "D38")]:
     LIGHT_REF_AT.update({u: (3.81, 1.27), r: (3.81, 0.0), led: (1.27, 3.3), dz: (6.8, 0.0)})
 LIGHT_REF_AT.update({"R80": (6.35, 0.0), "R81": (-6.35, 0.0)})        # coil resistors: label on the body
+VERT_REF = {"R83", "R84", "R85"}                                       # standing resistors: label along the body
 missing = [p["ref"] for p in PARTS if p["ref"] not in P]
 assert not missing, missing
 
@@ -185,7 +189,9 @@ for p in PARTS:
     if p["ref"] in LIGHT_REF_AT:                       # tight light-sensing strip: place labels by hand
         dx, dy = LIGHT_REF_AT[p["ref"]]
         ref.SetPosition(V(x + dx, y + dy)); ref.SetTextAngleDegrees(0)
-    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12"):
+    if p["ref"] in VERT_REF:
+        ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(V(0.8, 0.8))
+    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13"):
         ref.SetVisible(False)
 
 # ---------------------------------------------------------------- outline (rounded rectangle)
@@ -300,7 +306,11 @@ silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
 silk("BOBCAT DASH BREAKOUT", 28.0, 28.6, 1.5, bold=True, align="left")
-silk("rev 2.4  2026-10", 61.0, 28.6, 0.9, align="left")
+silk("rev 2.6  2026-10", 61.0, 28.6, 0.9, align="left")
+# rev 2.5: TILT sensor header: pin names under the pins, title beside it
+for i, lab in enumerate(["GND", "3V3", "SDA", "SCL"]):
+    silk(lab, 30.0 + i * 3.0, 9.0, 0.8)
+silk("TILT SENSOR (I2C)", 33.6, 20.6, 0.9, bold=True)
 silk("Every LED: lit = signal present.  HYD FILT/TEMP LED blinking = wire broken", 46.0, 41.2, 0.8, align="left")
 silk("4.7k resistor across each HYD FILT/TEMP switch, at the switch", 46.0, 42.9, 0.8, align="left")
 

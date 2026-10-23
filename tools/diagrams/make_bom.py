@@ -68,6 +68,12 @@ SECTIONS = [
   (3, "Inline fuse holder + fuse", "Blade, 1 A", "—", "lights-wiring.jpg", "One per sense wire (front, rear, work), at the tap on the lamp side of the switch"),
   (2, "Light switch", "≥15 A at 12 V DC, sealed: 1 × SPST on/off, 1 × SPDT ON-OFF-ON", "—", "lights-wiring.jpg", "Front on/off; back up = rear, middle = off, down = work"),
  ]),
+ ("MACHINE ANGLE (roll / pitch): README, Machine angle", [
+  (1, "Accelerometer + gyro board", "LSM6DSOX 6-DoF, I2C, 3.3 V (or LSM6DS3TR-C, Adafruit 4503)", "Adafruit 4438", "README: Machine angle", "Mount rigidly to the frame, flat, X arrow forward. I2C address 0x6A"),
+  (1, "Micro-Fit 3.0 receptacle housing", "4-position, single row, latching", "Molex 43645-0400", "Board README: TILT", "Plugs into the board's TILT header J13 (43650-0415)"),
+  (4, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "Board README: TILT", "Crimp tool for Micro-Fit, or buy pre-crimped Micro-Fit leads"),
+  (1, "Sensor cable", "22-24 AWG, 4-core, shielded if possible, under ~30-50 cm", "—", "README: Machine angle", "Your 14/16 AWG harness wire won't fit the Micro-Fit pins or the sensor board. Solder this end into the sensor board; shield to GND at the board end only"),
+ ]),
  ("CHARGING: Delco 10SI 3-wire alternator (wiring-schematic.jpg, section 7)", [
   (1, "Rectifier diode", "1N4001, 1 A 50 V", "1N4001", "Sch. 7", "In the terminal 1 (excite) wire, band toward the alternator: stops the running alternator back-feeding the key circuit (engine run-on, dash never sees key-off)"),
   (1, "Resistor 47 Ω", "5 W wirewound", "—", "Sch. 7", "In series with the diode: ~0.25 A with the key on and the engine stopped, like the charge lamp it replaces. Use the alternator maker's value if they give one"),

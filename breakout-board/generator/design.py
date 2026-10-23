@@ -217,6 +217,20 @@ for name, i, u, dz in [("FRONT", 7, "U7", "D28"), ("REAR", 8, "U8", "D29"), ("WO
     D(dz, "1N4148", "GND", f"LT_{name}_R", "Diode_THT:D_DO-35_SOD27_P2.54mm_Vertical_AnodeUp", "lights",
       "Reverse-spike protection across the LEDs (standing diode)")
 
+# ---------------------------------------------------------------- tilt sensor header (rev 2.5)
+# LSM6DSOX accelerometer + gyro board (Adafruit 4438) on the same I2C bus as the ADS1115, by a short cable.
+# Rev 2.6: a latching Molex Micro-Fit 3.0 header (vibration can't shake the plug out); the cable is soldered
+# to the sensor board (its STEMMA QT socket is friction-only). Pins 1-4: GND, 3V3, SDA, SCL.
+# 100R in SDA / SCL: static and wiring-mistake protection, and they soften noise picked up on the cable.
+# 47R in the 3.3 V feed: a shorted cable draws <= 70 mA (within the resistor's 1/4 W), so the Pi's 3.3 V rail
+# (which also feeds the ADS1115) stays up. The sensor board draws ~3 mA: it still gets ~3.2 V.
+part("J13", "Connector_Generic:Conn_01x04", "TILT", "Connector_Molex:Molex_Micro-Fit_3.0_43650-0415_1x04_P3.00mm_Vertical",
+     {1: "GND", 2: "TILT_3V3", 3: "TILT_SDA", 4: "TILT_SCL"}, "tilt",
+     "Molex Micro-Fit 3.0 43650-0415 (latching). Mates with housing 43645-0400 + 43030-0007 pins. Tilt sensor: GND, 3V3, SDA, SCL; cable under ~30-50 cm")
+R("R83", "100", "SDA", "TILT_SDA", "tilt", "SDA series protection")
+R("R84", "100", "SCL", "TILT_SCL", "tilt", "SCL series protection")
+R("R85", "47", "+3V3", "TILT_3V3", "tilt", "Sensor supply: limits a shorted cable to ~70 mA")
+
 # ---------------------------------------------------------------- test points
 TPS = ["+12V_IN", "+12V", "+12V_HORN", "+5V", "+3V3", "GND", "GND", "GND", "BATT_ADC", "FUEL_ADC",
        "OIL_GPIO", "FILT_SW", "TEMP_SW", "TACH_GPIO", "HORN_G", "BTN_GPIO"]

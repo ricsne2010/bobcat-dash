@@ -43,7 +43,7 @@ pulse_off = 0.5
 test_on_startup = true    # short chirp during the lamp test, so you know the horn works
 # Red alarms that sound the horn. Anything else that goes red (e.g. low fuel)
 # only plays the alert tone on the speaker.
-sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts"]
+sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts", "tilt"]
 
 [silence_button]          # momentary push button to ground
 gpio = 5
@@ -68,7 +68,7 @@ left_on_warning = true    # chime + "LIGHTS STILL ON" during the key-off countdo
 #             always on screen: dark = off, lit = on. Easy to read on a small (7") screen.
 #   "icons" = small symbols in the top-right corner of the RPM panel, only while a light is on
 #             (the original layout).
-display = "tiles"
+display = "icons"
 debounce = 0.2            # seconds a switch must hold a new position before it shows
 
 [lights.front]
@@ -82,6 +82,29 @@ gpio = 12                 # board J11 pin 2
 [lights.work]
 label = "WORK"
 gpio = 13                 # board J11 pin 3
+
+[tilt]                    # machine angle: roll (side to side) and pitch (nose up / down)
+# Sensor: LSM6DSOX (Adafruit 4438) or LSM6DS3TR-C (Adafruit 4503) on the Pi's I2C bus (shared with the ADS1115).
+# Mount it RIGIDLY to the machine's frame or a solidly mounted dash box (not on rubber isolators), flat,
+# with the board's X arrow pointing forward. Then, parked on level ground:  python3 dash.py --zero-tilt
+#
+# LIMITS: Bobcat's manuals give no angles. They say: keep the heavy end uphill, travel straight up and down
+# slopes, never across. These are starting points chosen for this machine, NOT Bobcat figures. Side slopes are
+# where a skid steer is least stable, so roll warns earliest. Nose down allows more: steep inclines are backed
+# up (nose pointing downhill, heavy end uphill). Lower them for a loaded or raised bucket if you like.
+enabled = true
+address = 0x6A            # 0x6A (Adafruit default) or 0x6B (DO/SDO jumper bridged)
+axes = "x_forward"        # how the board is mounted: x_forward, x_back, y_forward, y_back
+upside_down = false       # true if the chip faces down
+roll_warn = 8.0           # degrees, either side: amber STEEP, one beep
+roll_alarm = 15.0         # red TIP RISK: alarm tone and horn
+pitch_up_warn = 15.0      # nose up
+pitch_up_alarm = 20.0
+pitch_down_warn = 20.0    # nose down (e.g. backing up a steep incline)
+pitch_down_alarm = 25.0
+hold = 0.5                # seconds an angle must last before it shows (a bump isn't a slope)
+hysteresis = 1.0          # degrees back inside a limit before the warning clears
+filter_seconds = 3.0      # how slowly gravity corrects the gyro: longer = bumps move it less
 
 [pi_health]               # the Pi's own warnings, shown in the header (amber, one beep)
 enabled = true

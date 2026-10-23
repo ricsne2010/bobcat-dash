@@ -176,6 +176,55 @@ The dash keeps track:
 
 Stopping the engine clears it. The numbers are in `[cooldown]` in `config.toml`.
 
+## Machine angle (roll and pitch)
+
+The **MACHINE ANGLE** panel shows the machine from behind (roll, side to side) and from the side (pitch, nose
+up or down). The outlines tilt with the machine, over a dashed level line, with the angle in degrees and which
+way it's leaning. Battery and fuel share the panel above it, and the warning tiles are a little shorter to make
+room.
+
+| | Amber `STEEP` (one beep) | Red `TIP RISK` (alarm tone + horn) |
+|---|---|---|
+| Roll (either side) | 8° | 15° |
+| Pitch, nose up | 15° | 20° |
+| Pitch, nose down (backing up a steep incline) | 20° | 25° |
+
+**These limits are not from Bobcat.** Bobcat's manuals give no angles: they say to keep the heavy end of the
+loader uphill and to travel straight up and down slopes, never across. These defaults are chosen for this
+machine: roll warns earliest because side slopes are where a skid steer is least stable, and nose down allows
+the most because steep inclines are backed up, with the nose pointing downhill and the heavy end uphill. Change them in `[tilt]`, and use
+lower limits if you often work with a loaded or raised bucket. An angle must last 0.5 s before it shows (a bump
+isn't a slope), and clears 1° back inside the limit.
+
+**Sensor:** an **LSM6DSOX** accelerometer + gyro board (Adafruit 4438, or the LSM6DS3TR-C, Adafruit 4503). It plugs
+into the breakout board's latching **TILT** connector (Molex Micro-Fit 3.0, rev 2.6): pin 1 GND, 2 3V3, 3 SDA,
+4 SCL. Make the cable from 22–24 AWG wire (4-core shielded is best): a Micro-Fit housing 43645-0400 with four
+43030-0007 crimp pins at the board end, and the other end soldered straight into the sensor board's VIN, GND,
+SDA and SCL holes (its small STEMMA QT socket is friction-only and would shake loose). It shares the Pi's I2C
+bus with the ADS1115.
+
+**Cable length:** I2C is meant for short runs, and a skid steer is electrically noisy. Under ~30 cm is ideal;
+up to ~50 cm is fine routed away from the coil and plug leads (shielded 4-core is better, shield grounded at
+the board end only). Up to ~1 m, also slow the bus with `dtparam=i2c_arm_baudrate=50000` in
+`/boot/firmware/config.txt`. Further than that, use a differential I2C extender (e.g. SparkFun QwiicBus,
+PCA9615). The dash blends the gyro and accelerometer, so
+braking, bouncing and turning don't make the angle jump.
+
+- **Mount it rigidly** to the frame, or inside a dash box that's bolted solidly to it (not on rubber
+  isolators). Flat, with the board's **X arrow pointing forward**. Other orientations: `axes` and `upside_down`
+  in `[tilt]`.
+- **Zero it once**, parked on level, firm ground with the engine off: `python3 dash.py --zero-tilt`. It saves
+  the level point (and the gyro's small offset) in the data folder, where it stays through every key-off. It
+  refuses if the sensor reads more than 5° off level (parked on a slope, or the sensor mounted crooked) or if
+  the readings move (engine running, someone climbing on). Add `--force` only if you're sure the machine is
+  level.
+- **Parking and restarting on a slope is fine.** Nothing needs remembering: gravity gives the true angle at
+  every start-up. The first second is averaged (during the boot splash) so engine vibration doesn't skew
+  it. If you're parked past a limit, the panel says so as soon as the dash is up.
+- With no sensor answering, the panel shows grey **NO SIGNAL**. To leave tilt out entirely, set
+  `enabled = false` in `[tilt]`: the screen goes back to the original layout (separate battery and fuel panels,
+  taller warning tiles).
+
 ## Pi health warnings
 
 The dash also watches the Pi itself, and shows two amber warnings in the header (one beep each, and they
@@ -313,10 +362,10 @@ only **watches** them.
 
 | `display` | What you see |
 |---|---|
-| `"tiles"` (default) | Three big tiles across the bottom, **FRONT / REAR / WORK**, always on screen: dark with `OFF` when a light is off, lit solid (green, or amber for the work light) with `ON` when it's on. The warning tiles above them go to half height. Made for a small (7") screen. |
-| `"icons"` | The original layout: full-height warning tiles, and small light symbols in the top-right corner of the RPM panel, only while a light is on. |
+| `"tiles"` | Three big tiles across the bottom, **FRONT / REAR / WORK**, always on screen: dark with `OFF` when a light is off, lit solid (green, or amber for the work light) with `ON` when it's on. The warning tiles above them go to half height. Made for a small (7") screen. |
+| `"icons"` (default) | The original layout: full-height warning tiles, and small light symbols in the top-right corner of the RPM panel, only while a light is on. |
 
-To go back to the original, set `display = "icons"` and restart the dash. In the simulator, **J** switches
+To use the big tiles, set `display = "tiles"` and restart the dash. In the simulator, **J** switches
 between the two so you can compare them.
 
 **Wiring: feed the lights through the key, with a relay.** The full diagram, with parts, fuse and
@@ -721,6 +770,8 @@ python3 dash.py --sim --windowed
 | P | hour meter +10 h (simulator's own hour file only) |
 | X | hour meter and cool-down timer run 60× faster / normal speed (5 min of hard work takes 5 s) |
 | I / U | Pi too hot (PI HOT) / 5 V supply low (LOW 5V): each press turns it on or off |
+| Left / Right | roll the machine 3° (Right = right side down) |
+| , / . / 0 | pitch 3° nose down / nose up; 0 = back to level |
 | J | light display: big tiles / small icons |
 | 7 | front light switch on / off |
 | 8 / 9 | the 3-position back switch: rear lights / work light (pressing the other one switches over, pressing the same one again = middle, off) |
@@ -748,6 +799,7 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `cooldown.py`: cool-down reminder after hard work
 - `pihealth.py`: Pi temperature and 5 V supply warnings
 - `starter.py`: starter rest reminder and cooling countdown
+- `tilt.py`: machine angle: sensor reader, gyro/accelerometer blending, limits, `--zero-tilt`
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
 - `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff`
 - `tools/fit_splash.py`: fits your picture to the screen for the boot splash

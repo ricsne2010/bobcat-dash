@@ -239,7 +239,11 @@ def box(x1, y1, x2, y2, title, sub=None, hv=False):
                       [Sym("fill"), [Sym("type"), Sym("none")]], U()])
     text(title, x1 + 2.54, y1 + 4.4, 2.0, bold=True)
     if sub:
-        text(sub, x1 + 2.54, y1 + 6.0, 1.27, justify="left top")
+        # wrap to the box: KiCad's font at 1.27 mm is ~1.07 mm per character (measured on the PDF)
+        import textwrap
+        width = max(20, int((x2 - x1 - 5.08) / 1.1))
+        lines = [w for part in sub.split("\n") for w in textwrap.wrap(part, width)]
+        text("\n".join(lines), x1 + 2.54, y1 + 6.0, 1.27, justify="left top")
 
 
 # ---------------------------------------------------------------- reusable sub-circuits
@@ -619,6 +623,26 @@ def blk_modules(ox, oy):
     text("J9: MAX98357A (LRC BCLK DIN GAIN SD GND VIN)", ox + 2.54, oy + 58.6, 1.27)
 
 
+def blk_tilt(ox, oy):
+    box(ox, oy, ox + 92, oy + 50, "TILT SENSOR CONNECTOR (rev 2.6)",
+        "Latching Molex Micro-Fit 3.0. LSM6DSOX board on a short cable (under ~30-50 cm), on the same I2C bus "
+        "as the ADS1115.")
+    jx, jy = ox + 74.93, oy + 30.48
+    place("J13", jx, jy, ref_at=(2.54, -6.35, None), val_at=(2.54, 8.89, None))
+    p1, p2, p3, p4 = (pin("J13", n) for n in (1, 2, 3, 4))
+    W(p1, (p1[0] - 2.54, p1[1]))
+    pwr("GND", (p1[0] - 2.54, p1[1]), side="left")
+    for (pp, ref, top, dx) in [(p2, "R85", "+3V3", 15.24), (p3, "R83", "SDA", 25.4), (p4, "R84", "SCL", 35.56)]:
+        x = pp[0] - dx
+        W(pp, (x, pp[1]))
+        place(ref, x, pp[1] - 3.81)
+        if top == "+3V3":
+            pwr("+3V3", pin(ref, 1))
+        else:
+            gl(top, pin(ref, 1), 90)
+    text("1 GND   2 3V3   3 SDA   4 SCL  (cable soldered to the sensor board)", ox + 2.54, oy + 46.0, 1.27)
+
+
 def blk_testpoints(ox, oy):
     box(ox, oy, ox + 212, oy + 34, "TEST POINTS", "Same labels as the board silkscreen.")
     tps = [p for p in PARTS if p["group"] == "tp"]
@@ -650,7 +674,7 @@ def blk_flags(ox, oy):
 
 
 def blk_mech(ox, oy):
-    box(ox, oy, ox + 40, oy + 20, "MOUNTING")
+    box(ox, oy, ox + 36.83, oy + 20, "MOUNTING")
     for i in range(4):
         place(f"H{i + 1}", ox + 6.35 + i * 8.89, oy + 13.97, ref_at=(0, -3.81, None), val_at=(0, 3.81, None))
 
@@ -663,6 +687,7 @@ blk_analog(177.8, 129.54)
 blk_lights(177.8, 200.66)
 blk_testpoints(177.8, 261.62)
 blk_mech(393.7, 261.62)
+blk_tilt(177.8, 299.72)
 blk_pi(434.34, 12.7)
 blk_modules(434.34, 90.17)
 blk_horn(434.34, 200.66)
@@ -816,7 +841,7 @@ for a, b in segs:
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
        [Sym("title_block"), [Sym("title"), "Bobcat Digital Dash - Breakout Board"], [Sym("date"), "2026-10-22"],
-        [Sym("rev"), "2.4"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
+        [Sym("rev"), "2.6"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \
       [[Sym("sheet_instances"), [Sym("path"), "/", [Sym("page"), "1"]]], [Sym("embedded_fonts"), Sym("no")]]

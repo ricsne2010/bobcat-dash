@@ -342,6 +342,8 @@ class SimSensors:
         ("T", "tach sensor fails / works (reads 0 rpm)"),
         ("Z", "governor fails / works (engine overspeeds)"),
         ("D", "engine bogs to ~700 rpm / recovers (low idle)"),
+        ("Left / Right", "roll the machine 3 deg (right = right side down)"),
+        (", / .  / 0", "pitch nose down / nose up 3 deg; 0 = level ground"),
         ("P / X", "hour meter +10 h / hours + cool-down 60x faster"),
         ("I / U", "Pi too hot / 5 V supply low (each on / off)"),
         ("J", "light display: big tiles / small icons"),
@@ -369,6 +371,8 @@ class SimSensors:
         self.run_time = 0.0          # seconds since it caught
         self.off_time = 1e6          # seconds since it stopped
         self.cold = False            # C: cold engine (longer crank, deeper battery dip)
+        self.tilt_target = [0.0, 0.0]   # Left / Right = roll, , / . = pitch, 0 = level
+        self.tilt = [0.0, 0.0]
         self.no_start = False        # W: it won't catch (no fuel / no spark): cranks until you let go
         self.ran = False             # it ran (and charged) since the last start attempt
         self.volts = 12.6            # battery model: dips while cranking, charges once running
@@ -419,6 +423,15 @@ class SimSensors:
         return self.volts
 
     def handle_key(self, key):
+        if key in ("left", "right"):          # roll: right = right side down
+            self.tilt_target[0] = max(-30.0, min(30.0, self.tilt_target[0] + (3.0 if key == "right" else -3.0)))
+            return
+        if key in (",", "."):                 # pitch: . = nose up
+            self.tilt_target[1] = max(-30.0, min(30.0, self.tilt_target[1] + (3.0 if key == "." else -3.0)))
+            return
+        if key == "0":
+            self.tilt_target = [0.0, 0.0]
+            return
         if key == "s":
             self.running = not self.running and self.key_on   # no ignition, no start
             self.crank_left = (self.crank_s * (2.2 if self.cold else 1.0)) if self.running else 0.0
@@ -546,6 +559,9 @@ class SimSensors:
             self.fuel = max(0.0, self.fuel - dt * 0.05)
 
         auto = self._battery(now, dt, cranking)
+        for i in (0, 1):                      # the machine eases onto a new slope, with a little vibration
+            self.tilt[i] += (self.tilt_target[i] - self.tilt[i]) * min(1.0, dt * 1.5)
+        shake = 0.4 * math.sin(now * 23.0) if self.running and self.crank_left <= 0 else 0.0
         volts = self.volts_override if self.volts_override is not None else auto
         engine_turning = self.rpm >= tc["running_rpm"]
 
@@ -569,6 +585,7 @@ class SimSensors:
             "warnings": warnings,
             "key": self.key_on,
             "lights": self.light_states(),
+            "tilt": (self.tilt[0] + shake, self.tilt[1] + 0.5 * shake),
         }
 
     def light_states(self):

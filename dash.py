@@ -28,6 +28,7 @@ from cooldown import COOLING, DONE, IDLE_NEEDED, CoolDown
 from hourmeter import HourMeter, set_hours_cli
 from pihealth import PiHealth
 from starter import StarterGuard
+from tilt import TiltSensor, TiltStatus, zero_cli
 from power import COUNTDOWN, ON, SHUTDOWN, PowerManager
 from sensors import calibrate, light_inputs, make_sensors
 from version import BUILD_DATE, VERSION
@@ -280,6 +281,8 @@ def flat_states(st):
     out = {"volts": st["volts"][0], "rpm": st["rpm"][0], "fuel": st["fuel"][0]}
     out.update({name: s for name, (s, _) in st["warnings"].items()})
     out.update({src: WARN for src, _ in st.get("system", [])})
+    if st.get("tilt"):
+        out["tilt"] = st["tilt"]["state"]
     return out
 
 
@@ -301,7 +304,8 @@ class Dash:
         lc = cfg.get("lights", {})
         # "tiles": big FRONT / REAR / WORK tiles under half-height warning tiles. "icons": small symbols
         # in the RPM panel (the original layout). Simulator key J switches between them.
-        self.light_style = lc.get("display", "tiles") if lc.get("enabled") else "icons"
+        self.light_style = lc.get("display", "icons") if lc.get("enabled") else "icons"
+        self.tilt_on = cfg.get("tilt", {}).get("enabled", True)
 
     def R(self, x, y, w, h):
         return pygame.Rect(round(x * self.sx), round(y * self.sy), round(w * self.sx), round(h * self.sy))
@@ -356,21 +360,29 @@ class Dash:
         flash = int(now * 4) % 2 == 0  # 2 Hz blink for alarms
         self.screen.fill(BG)
         self.draw_header(st, lamp_test, flash)
-        self.draw_tach(self.R(12, 66, 492, 420), r["rpm"], *st["rpm"], note=st.get("cooldown"))
         tiles = self.light_style == "tiles" and self.cfg.get("lights", {}).get("enabled")
+        if self.tilt_on:        # machine angle panel: battery + fuel share one panel, warning tiles shorter
+            self.draw_tach(self.R(12, 66, 492, 500), r["rpm"], *st["rpm"], note=st.get("cooldown"))
+            self.draw_batt_fuel(self.R(516, 66, 496, 184), r, st)
+            self.draw_tilt(self.R(516, 262, 496, 304), st.get("tilt"), flash, lamp_test)
+            wy, wh = 578, 178
+        else:                   # the original layout
+            self.draw_tach(self.R(12, 66, 492, 420), r["rpm"], *st["rpm"], note=st.get("cooldown"))
+            self.draw_volts(self.R(516, 66, 496, 204), r["volts"], *st["volts"], st["running"])
+            self.draw_fuel(self.R(516, 282, 496, 204), r["fuel_pct"], *st["fuel"])
+            wy, wh = 498, 258
         if not tiles:
             self.draw_lights(r.get("lights") or {}, lamp_test)
-        self.draw_volts(self.R(516, 66, 496, 204), r["volts"], *st["volts"], st["running"])
-        self.draw_fuel(self.R(516, 282, 496, 204), r["fuel_pct"], *st["fuel"])
 
         names = list(self.cfg["warnings"])
         gap = 16
         tile_w = (1000 - gap * (len(names) - 1)) / len(names)
+        th = (wh - 10) * 0.5 if tiles else wh
         for i, name in enumerate(names):
-            rect = self.R(12 + i * (tile_w + gap), 498, tile_w, 126 if tiles else 258)
-            self.draw_warning(rect, self.cfg["warnings"][name]["label"], *st["warnings"][name], flash, compact=tiles)
+            rect = self.R(12 + i * (tile_w + gap), wy, tile_w, th)
+            self.draw_warning(rect, self.cfg["warnings"][name]["label"], *st["warnings"][name], flash, design_h=th)
         if tiles:
-            self.draw_light_tiles(r.get("lights") or {}, lamp_test, top=636, height=120)
+            self.draw_light_tiles(r.get("lights") or {}, lamp_test, top=wy + th + 10, height=wh - th - 10)
 
         if self.show_help and self.help:
             self.draw_help()
@@ -505,6 +517,8 @@ class Dash:
 
         states = [st["volts"][0], st["rpm"][0], st["fuel"][0]] + [s for s, _ in st["warnings"].values()]
         states += [WARN for _ in st.get("system", [])]
+        if st.get("tilt"):
+            states.append(st["tilt"]["state"])
         alarms, warns = states.count(ALARM), states.count(WARN) + states.count(UNKNOWN)
         right = (rect.right - self.px(16), rect.centery)
         if lamp_test:
@@ -654,7 +668,159 @@ class Dash:
             pygame.draw.line(self.screen, PANEL, (qx, bar.y), (qx, bar.bottom - 1), self.px(3))
         self._bar_labels(bar, [(0, "E"), (0.25, "1/4"), (0.5, "1/2"), (0.75, "3/4"), (1, "F")])
 
-    def draw_warning(self, rect, label, state, status, flash, compact=False):
+    def draw_batt_fuel(self, rect, r, st):
+        """Battery and fuel side by side in one panel (used when the machine angle panel is on)."""
+        pygame.draw.rect(self.screen, PANEL, rect, border_radius=self.px(14))
+        half = rect.w // 2
+        pygame.draw.line(self.screen, TRACK, (rect.x + half, rect.y + self.px(14)), (rect.x + half, rect.bottom - self.px(14)), self.px(2))
+        vc = self.cfg["voltage"]
+        for i in range(2):
+            col = pygame.Rect(rect.x + i * half, rect.y, half, rect.h)
+            x0 = col.x + self.px(18)
+            if i == 0:
+                v, (state, label) = r["volts"], st["volts"]
+                self.text("BATTERY", 26, DIM, topleft=(x0, col.y + self.px(12)))
+                self.text("RUNNING" if st["running"] else "ENGINE OFF", 18, DIM,
+                          topright=(col.right - self.px(16), col.y + self.px(16)))
+                val = self.text("--.-" if v is None else f"{v:.1f}", 80, COLOR[state], midleft=(x0, col.y + self.px(72)))
+                self.text("V", 40, DIM, bottomleft=(val.right + self.px(6), val.bottom - self.px(6)))
+            else:
+                v, (state, label) = r["fuel_pct"], st["fuel"]
+                self.text("FUEL", 26, DIM, topleft=(x0, col.y + self.px(12)))
+                val = self.text("--" if v is None else f"{v:.0f}", 80, COLOR[state], midleft=(x0, col.y + self.px(72)))
+                self.text("%", 40, DIM, bottomleft=(val.right + self.px(6), val.bottom - self.px(6)))
+            self.pill(label, 24, COLOR[state], midleft=(x0, col.y + self.px(120)))
+            bar = pygame.Rect(x0, col.bottom - self.px(40), col.w - self.px(36), self.px(10))
+            if i == 0:
+                lo, hi = vc["bar_min"], vc["bar_max"]
+                lim = voltage_limits(self.cfg, st["running"])
+
+                def x(volts):
+                    return bar.x + bar.w * (max(lo, min(hi, volts)) - lo) / (hi - lo)
+                for a, b, color in voltage_zones(lim, lo, hi):
+                    pygame.draw.rect(self.screen, mix(PANEL, color, 0.75),
+                                     pygame.Rect(round(x(a)), bar.y, max(0, round(x(b) - x(a))), bar.h))
+                if v is not None:
+                    mx = x(v)
+                    pygame.draw.line(self.screen, TEXT, (mx, bar.y - self.px(6)), (mx, bar.bottom + self.px(2)), self.px(4))
+                ends = [(0, f"{lo:.0f}"), (0.5, f"{(lo + hi) / 2:.0f}"), (1, f"{hi:.0f} V")]
+            else:
+                pygame.draw.rect(self.screen, TRACK, bar, border_radius=self.px(4))
+                if v:
+                    fill = bar.copy()
+                    fill.w = max(self.px(8), round(bar.w * v / 100))
+                    pygame.draw.rect(self.screen, COLOR[state], fill, border_radius=self.px(4))
+                for q in (0.25, 0.5, 0.75):
+                    qx = bar.x + bar.w * q
+                    pygame.draw.line(self.screen, PANEL, (qx, bar.y), (qx, bar.bottom - 1), self.px(2))
+                ends = [(0, "E"), (0.5, "1/2"), (1, "F")]
+            for frac, s in ends:
+                self.text(s, 20, DIM, midtop=(bar.x + bar.w * frac, bar.bottom + self.px(4)))
+
+    # skid steer outlines (design units, origin at the middle of the ground contact, y up = negative)
+    REAR_VIEW = {
+        "tyres": [[(-64, 0), (-40, 0), (-40, -42), (-64, -42)], [(40, 0), (64, 0), (64, -42), (40, -42)]],
+        "body": [(-46, -10), (46, -10), (46, -50), (-46, -50)],
+        "cab": [(-36, -50), (36, -50), (30, -104), (-30, -104)],
+        "window": [(-23, -60), (23, -60), (19, -94), (-19, -94)],
+        "arms": [[(-52, -40), (-44, -40), (-44, -100), (-52, -100)], [(44, -40), (52, -40), (52, -100), (44, -100)]],
+    }
+    SIDE_VIEW = {
+        "wheels": [(-32, -18, 18), (32, -18, 18)],
+        "body": [(-56, -14), (52, -14), (52, -46), (-56, -46)],
+        "cab": [(-30, -46), (26, -46), (20, -100), (-26, -100)],
+        "window": [(-18, -56), (16, -56), (12, -90), (-15, -90)],
+        "engine": [(-56, -46), (-34, -46), (-34, -66), (-56, -66)],
+        "arm": [(-42, -90), (-37, -94), (58, -49), (55, -44)],
+        "bucket": [(52, -52), (76, -52), (82, -4), (56, -2), (50, -20)],
+    }
+
+    def _rot(self, pts, ang, origin, scale):
+        """Rotate design points clockwise on screen by ang degrees about the ground point, then place them."""
+        c, s_ = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+        ox, oy = origin
+        return [(ox + (x * c - y * s_) * scale, oy + (x * s_ + y * c) * scale) for x, y in pts]
+
+    def _machine(self, kind, ang, origin, scale, color):
+        w = max(1, self.px(3))
+        fill = mix(PANEL, color, 0.18)
+        if kind == "rear":
+            v = self.REAR_VIEW
+            for t in v["tyres"]:
+                pygame.draw.polygon(self.screen, color, self._rot(t, ang, origin, scale))
+            for poly in (v["body"], v["cab"]):
+                pts = self._rot(poly, ang, origin, scale)
+                pygame.draw.polygon(self.screen, fill, pts)
+                pygame.draw.polygon(self.screen, color, pts, w)
+            for a in v["arms"]:
+                pygame.draw.polygon(self.screen, color, self._rot(a, ang, origin, scale))
+            pygame.draw.polygon(self.screen, color, self._rot(v["window"], ang, origin, scale), w)
+        else:
+            v = self.SIDE_VIEW
+            for poly in (v["body"], v["engine"], v["cab"]):
+                pts = self._rot(poly, ang, origin, scale)
+                pygame.draw.polygon(self.screen, fill, pts)
+                pygame.draw.polygon(self.screen, color, pts, w)
+            pygame.draw.polygon(self.screen, color, self._rot(v["window"], ang, origin, scale), w)
+            pygame.draw.polygon(self.screen, color, self._rot(v["arm"], ang, origin, scale))
+            pts = self._rot(v["bucket"], ang, origin, scale)
+            pygame.draw.polygon(self.screen, fill, pts)
+            pygame.draw.polygon(self.screen, color, pts, w)
+            for x, y, rad in v["wheels"]:
+                (cx, cy), = self._rot([(x, y)], ang, origin, scale)
+                pygame.draw.circle(self.screen, color, (round(cx), round(cy)), round(rad * scale))
+                pygame.draw.circle(self.screen, PANEL, (round(cx), round(cy)), round(rad * scale * 0.4))
+
+    def draw_tilt(self, rect, t, flash, lamp_test):
+        """MACHINE ANGLE: roll (rear view) and pitch (side view). The outlines tilt with the machine."""
+        pygame.draw.rect(self.screen, PANEL, rect, border_radius=self.px(14))
+        self.text("MACHINE ANGLE", 26, DIM, topleft=(rect.x + self.px(18), rect.y + self.px(12)))
+        tc = self.cfg.get("tilt", {})
+        if lamp_test:
+            t = {"state": ALARM, "text": "TEST", "roll": ALARM, "pitch": ALARM, "angles": (0.0, 0.0)}
+        if t is None:
+            return
+        state = t["state"]
+        pill_c = RED if state == ALARM and flash else RED_DARK if state == ALARM else COLOR[state]
+        self.pill(t["text"], 24, pill_c, topright=(rect.right - self.px(14), rect.y + self.px(8)))
+        half = rect.w // 2
+        for i, (axis, kind, name) in enumerate([("roll", "rear", "ROLL"), ("pitch", "side", "PITCH")]):
+            col = pygame.Rect(rect.x + i * half, rect.y, half, rect.h)
+            ground = (col.centerx, col.y + self.px(186))
+            scale = self.k * 0.95
+            a_state = t[axis]
+            color = {OK: TEXT, WARN: AMBER, ALARM: RED if flash else mix(RED, PANEL, 0.35), UNKNOWN: GRAY}[a_state]
+            self.text(name, 22, DIM, midtop=(col.centerx, col.y + self.px(40)))
+            # level reference (dashed) and the ground under the machine
+            for k in range(-6, 6):
+                x = col.centerx + k * self.px(16)
+                pygame.draw.line(self.screen, TRACK, (x, ground[1]), (x + self.px(8), ground[1]), self.px(2))
+            if t["angles"] is None:
+                self._machine(kind, 0, ground, scale, GRAY)
+                self.text("NO SIGNAL", 34, GRAY, midtop=(col.centerx, col.y + self.px(200)))
+                continue
+            ang = t["angles"][0] if axis == "roll" else -t["angles"][1]   # nose up turns the side view anticlockwise
+            g = self._rot([(-96, 0), (96, 0)], ang, ground, scale)
+            pygame.draw.line(self.screen, mix(PANEL, color, 0.6), g[0], g[1], self.px(4))
+            self._machine(kind, ang, ground, scale, color)
+            a = t["angles"][0 if axis == "roll" else 1]
+            if abs(a) < 0.5:
+                where = "LEVEL"
+            elif axis == "roll":
+                where = "RIGHT DOWN" if a > 0 else "LEFT DOWN"
+            else:
+                where = "NOSE UP" if a > 0 else "NOSE DOWN"
+            num = self.text(f"{abs(a):.0f}\u00b0", 54, color if a_state != OK else TEXT,
+                            midtop=(col.centerx - self.px(34), col.y + self.px(204)))
+            self.text(where, 22, DIM, midleft=(num.right + self.px(10), num.centery))
+            if axis == "roll":
+                lims = f"limits {tc.get('roll_warn', 8):.0f}\u00b0 / {tc.get('roll_alarm', 15):.0f}\u00b0"
+            else:
+                lims = (f"up {tc.get('pitch_up_warn', 15):.0f}/{tc.get('pitch_up_alarm', 20):.0f}\u00b0   "
+                        f"down {tc.get('pitch_down_warn', 20):.0f}/{tc.get('pitch_down_alarm', 25):.0f}\u00b0")
+            self.text(lims, 18, DIM, midtop=(col.centerx, col.bottom - self.px(28)))
+
+    def draw_warning(self, rect, label, state, status, flash, compact=False, design_h=258):
         bg = TILE_BG[state]
         if state == ALARM and not flash:
             bg = RED_DARK
@@ -662,10 +828,17 @@ class Dash:
         pygame.draw.rect(self.screen, bg, rect, border_radius=radius)
         pygame.draw.rect(self.screen, COLOR[state], rect, width=self.px(4), border_radius=radius)
         color = {ALARM: TEXT, UNKNOWN: DIM}.get(state, COLOR[state])
-        if compact:                     # half-height tile (light tiles below): label on one line
-            self.text(label.replace("\n", " "), 30, TEXT, max_w=rect.w - self.px(24),
-                      midtop=(rect.centerx, rect.y + self.px(12)))
-            self.text(status, 70, color, max_w=rect.w - self.px(28), center=(rect.centerx, rect.y + rect.h * 0.64))
+        if compact or design_h < 140:   # short tile: label on one line
+            self.text(label.replace("\n", " "), min(30, design_h * 0.27), TEXT, max_w=rect.w - self.px(24),
+                      midtop=(rect.centerx, rect.y + self.px(min(12, design_h * 0.1))))
+            self.text(status, min(70, design_h * 0.56), color, max_w=rect.w - self.px(28),
+                      center=(rect.centerx, rect.y + rect.h * 0.64))
+            return
+        if design_h < 220:              # medium tile (machine angle panel shown)
+            y = rect.y + self.px(14)
+            for line in label.split("\n"):
+                y = self.text(line, 34, TEXT, max_w=rect.w - self.px(24), midtop=(rect.centerx, y)).bottom + self.px(1)
+            self.text(status, 80, color, max_w=rect.w - self.px(28), center=(rect.centerx, rect.y + rect.h * 0.71))
             return
 
         y = rect.y + self.px(22)
@@ -725,6 +898,8 @@ def main():
     ap.add_argument("--version", action="version", version=f"Bobcat Custom Display {VERSION} (built {BUILD_DATE})")
     ap.add_argument("--boot-splash", nargs="?", const=os.path.join(here, "splash", "boot-splash.png"), metavar="PNG",
                     help="save the splash screen (picture + caption) at the display size, for the Pi's boot splash")
+    ap.add_argument("--zero-tilt", action="store_true", help="park on level ground, then run this to zero the angle sensor")
+    ap.add_argument("--force", action="store_true", help="with --zero-tilt: save even if it reads >5 deg off level or moving")
     ap.add_argument("--set-hours", type=float, metavar="HOURS",
                     help="change the engine hour meter total (asks for confirmation; the dash must be stopped)")
     args = ap.parse_args()
@@ -738,6 +913,8 @@ def main():
     if args.calibrate:
         calibrate(cfg)
         return
+    if args.zero_tilt:
+        raise SystemExit(zero_cli(cfg, force=args.force))
     log.info("Bobcat Custom Display %s (built %s)", VERSION, BUILD_DATE)
     if args.boot_splash:
         raise SystemExit(save_boot_splash(cfg, here, args.boot_splash))
@@ -764,6 +941,8 @@ def main():
     cooldown = CoolDown(cfg)
     health = PiHealth(cfg, sim=args.sim)
     starter = StarterGuard(cfg)
+    tilt_status = TiltStatus(cfg)
+    tilt_sensor = None if args.sim or not tilt_status.enabled else TiltSensor(cfg)
     power = PowerManager(cfg, sim=args.sim, start_off=args.sim)
     power_state = power.state           # the simulator starts as a parked machine: key off, powered down
     splash = Splash(screen, cfg, here)
@@ -882,6 +1061,8 @@ def main():
                 running_since = None
 
             st["system"] = health.status(now)
+            st["tilt"] = tilt_status.update(readings.get("tilt") if args.sim else
+                                            (tilt_sensor.angles() if tilt_sensor else None), now)
             lamp_test = now < t0 + d.get("lamp_test_seconds", 0)      # includes the splash time
             if lamp_test:
                 alerts.update({}, now)          # only the test chirp
@@ -906,6 +1087,8 @@ def main():
             pygame.display.flip()
             clock.tick(d["fps"])
     finally:
+        if tilt_sensor:
+            tilt_sensor.close()
         health.close()
         alerts.close()
         hourmeter.close()
