@@ -336,6 +336,8 @@ class Handler(BaseHTTPRequestHandler):
                 + '</p><dl class="pairs" data-h12="' + ("0" if settings.clock_fmt() == "24h" else "1") + '">'
                 '<dt>Dash</dt><dd id="dash">-</dd><dt>This device</dt><dd id="dev">-</dd><dt>Difference</dt><dd id="diff">-</dd>'
                 f'<dt>Time zone</dt><dd>{esc(settings.zone_text())}</dd></dl>'
+                + ('<p class="msg bad">The engine is running: stop it to set the time or the time zone.</p>'
+                   if self.ctx["live"]().get("running") else '')
                 + CODE_FIELD.format(id="code3") +
                 '<button class="btn" onclick="setclock()">Sync to this device</button> '
                 '<p style="margin-top:14px"><label>Or set by hand (the dash\'s local time) '
@@ -353,12 +355,15 @@ class Handler(BaseHTTPRequestHandler):
                 'Central and so on move an hour in March and November by themselves). '
                 '<b>Sync</b> copies this phone\'s or laptop\'s time and time zone to the dash, however far off the '
                 'dash is. <b>Set by hand</b> is for when this device\'s clock can\'t be trusted. Both save the time in the '
-                'Pi 5\'s battery-backed clock (if its RTC battery is fitted) and need the maintenance code: every record is '
+                'Pi 5\'s battery-backed clock (if its RTC battery is fitted) and need the maintenance code and the engine stopped: every record is '
                 'dated by this clock. The dash can also be set from its own buttons: SYSTEM &gt; CLOCK.</p></section>' + SETTINGS_JS)
         self._page("Settings", body, "/settings")
 
     def set_clock(self):
         c = self.ctx
+        if c["live"]().get("running"):                     # asked before the code, so no try is used up
+            self._send("The engine is running: stop it first to set the time or the time zone.", "text/plain", 409)
+            return
         if not self._code_ok():
             return
         zone = (self.headers.get("X-Zone") or "").strip()            # the time zone only

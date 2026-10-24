@@ -7,7 +7,8 @@ Buttons:  LEFT / RIGHT  change screen, or move through a list once you're in it
 SYSTEM:   OK opens SERVICE WI-FI (the dash's own Wi-Fi and service web page, servicemode.py / web.py).
           Turning it on, and installing software from a USB stick, ask for the maintenance code (maintcode.py).
 USB stick: plugged in with the engine off, its pop-up opens by itself (usb.py).
-Safety: a new red alarm always brings the gauges back, pop-ups never open with the engine running, and
+Safety: a new red alarm always brings the gauges back, pop-ups never open by themselves with the engine running,
+the clock and time zone are set with the engine off only (CLOCK says why), and
 after home_after_s without a button press the dash goes back to the gauges on its own.
 """
 import datetime
@@ -48,6 +49,8 @@ TITLES = {"gauges": "GAUGES", "history": "HISTORY", "service": "SERVICE", "syste
 EV_ACTIONS = (("close", "CLOSE"), ("clear", "CLEAR THIS"), ("all", "CLEAR ALL"))
 SURE = ("NO", "YES")
 CLOCK_FIELDS = (("YEAR", 2025, 2099), ("MONTH", 1, 12), ("DAY", 1, 31), ("HOUR", 0, 23), ("MINUTE", 0, 59))
+CLOCK_SETTING = ("clockset", "clocksure", "tzpick", "tzsure")
+CLOCK_WHY = ("to set the clock", "to change the time zone")
 MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")           # "are you sure?" pop-ups: NO is selected; YES needs a deliberate arrow press
 ACTIONS = (("info", "DETAILS"), ("done", "MARK DONE"), ("later", "LATER"), ("later5", "+5 HOURS"), ("hist", "COMPLETED"))
 
@@ -222,8 +225,15 @@ class Screens:
             if b in ("left", "right") and n:
                 m["i"] = (m["i"] + (1 if b == "right" else -1)) % n
             elif b == "ok" and n:
-                svc.set_climate(svc.climates[m["i"]]["id"])
-                self.modal = None
+                cid = svc.climates[m["i"]]["id"]
+                if cid == svc.climate:                     # unchanged: nothing to save
+                    self.modal = None
+                    return
+
+                def save():
+                    svc.set_climate(cid)
+                    self.modal = None
+                self._need_code(ctx, "to change the climate setting", save, m)
             elif b == "back":
                 self.modal = None
         elif k == "event":
@@ -259,12 +269,14 @@ class Screens:
                 self.modal = m["back"]
             elif b == "ok" and m.get("act") == 2:                                   # 12 / 24 HOUR
                 settings.set_clock_fmt("24h" if settings.clock_fmt() == "12h" else "12h")
-            elif b == "ok" and m.get("act") == 1 and not ctx["st"]["running"]:     # TIME ZONE
+            elif b == "ok" and ctx["st"]["running"]:              # SET TIME / TIME ZONE: engine off only
+                m["msg"] = "Stop the engine first to set the time or the time zone."
+            elif b == "ok" and m.get("act") == 1:                 # TIME ZONE
                 names = [z for z, _ in settings.TIME_ZONES]
                 cur = settings.zone_name()
                 picker = {"kind": "tzpick", "back": m, "i": names.index(cur) if cur in names else 0}
                 self._need_code(ctx, "to change the time zone", lambda: setattr(self, "modal", picker), m)
-            elif b == "ok" and not ctx["st"]["running"]:          # SET TIME: by hand
+            elif b == "ok":                                      # SET TIME: by hand
                 t = time.localtime() if clock_valid() else time.localtime(time.mktime((2026, 1, 1, 12, 0, 0, 0, 0, -1)))
                 setter = {"kind": "clockset", "back": m, "f": 0,
                           "v": [t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min]}
@@ -303,6 +315,8 @@ class Screens:
                 m["sel"] = 1 if b == "right" else 0
             elif b == "back" or (b == "ok" and m["sel"] == 0):
                 self.modal = m["back"]
+            elif b == "ok" and ctx["st"]["running"]:
+                self.modal = self._clock_modal(m)
             elif b == "ok":
                 ok_, msg = ctx["set_clock"](None, m["zone"][0])
                 if ok_:
@@ -313,6 +327,8 @@ class Screens:
                 m["sel"] = 1 if b == "right" else 0
             elif b == "back" or (b == "ok" and m["sel"] == 0):
                 self.modal = m["back"]
+            elif b == "ok" and ctx["st"]["running"]:
+                self.modal = self._clock_modal(m)
             elif b == "ok":
                 y, mo, dd, hh, mi = m["v"]
                 ok_, msg = ctx["set_clock"](time.mktime((y, mo, dd, hh, mi, 0, 0, 0, -1)))
@@ -352,6 +368,15 @@ class Screens:
         elif k == "recovery":
             if b == "ok":
                 m["then"]()
+
+    @staticmethod
+    def _clock_modal(m):
+        """From a clock-setting pop-up back to the CLOCK pop-up, saying why (the engine started)."""
+        while m and m.get("kind") != "clock":
+            m = m.get("back")
+        if m:
+            m["msg"] = "Stop the engine first to set the time or the time zone."
+        return m
 
     # -- the maintenance code
 
@@ -496,6 +521,9 @@ class Screens:
             self.go_home()
         if running and self.modal and self.modal["kind"] in ("announce", "usb"):
             self.modal = None
+        m = self.modal
+        if running and m and (m["kind"] in CLOCK_SETTING or m["kind"] == "code" and m["why"] in CLOCK_WHY):
+            self.modal = self._clock_modal(m)            # the clock is set with the engine off
         if usb and usb.notice and not running and not self.locked and not self.modal:
             usb.notice = False
             if usb.state != usb.WAITING:
@@ -903,7 +931,8 @@ class Screens:
                 lines.append(f"{it['name']}: every {it.get('hours_by_climate', {}).get(c.get('id'), it['hours']):g} h")
             for i, line in enumerate(lines[:4]):
                 d.text(line, 30, TEXT if i == 0 else DIM, midtop=(box.centerx, box.y + d.px(160 + 38 * i)))
-            self._hints(d, [("lr", "change"), ("ok", "save"), ("back", "cancel")], box.bottom - d.px(28), right=box.right - d.px(24))
+            save = "save" if ctx["code"].unlocked else "save (code)"
+            self._hints(d, [("lr", "change"), ("ok", save), ("back", "cancel")], box.bottom - d.px(28), right=box.right - d.px(24))
         elif k == "event":
             ev = m["ev"]
             col = LEVEL_COLOR.get(ev["level"], GRAY)
@@ -942,8 +971,13 @@ class Screens:
             d.text(time.strftime("%a %b %d %Y   ") + settings.hhmm(seconds=True) if ok_ else "NOT SET", 40,
                    TEXT if ok_ else AMBER, midtop=(box.centerx, box.y + d.px(84)))
             d.text(settings.zone_text(), 26, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(142)))
-            self._wrap(d, "Daylight saving follows the time zone by itself. A phone or laptop can set both at once: "
-                          "SERVICE WI-FI, then the web page's Settings > Sync to this device.", box, box.y + d.px(190), 24, DIM, 3)
+            if ctx["st"]["running"]:
+                self._wrap(d, m.get("msg") or "ENGINE RUNNING: stop the engine to set the time or the time zone.",
+                           box, box.y + d.px(190), 26, AMBER, 3)
+            else:
+                m.pop("msg", None)
+                self._wrap(d, "Daylight saving follows the time zone by itself. A phone or laptop can set both at once: "
+                              "SERVICE WI-FI, then the web page's Settings > Sync to this device.", box, box.y + d.px(190), 24, DIM, 3)
             fmt_btn = "24-HOUR" if settings.clock_fmt() == "24h" else "12-HOUR"
             self._buttons_row(d, box, ["SET TIME", "TIME ZONE", fmt_btn], m.get("act", 0), box.y / d.sy + 300)
             act = m.get("act", 0)

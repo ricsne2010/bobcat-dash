@@ -773,8 +773,9 @@ Backspace, and a USB keyboard works the same) move between four screens. The gau
   **LATER** (ask again at the next key-on), **+5 HOURS**, and **COMPLETED** (when it was done before).
 - **Climate:** the manual changes the engine oil interval in heat (every **25 h above 90 °F** instead of 50 h)
   and the oil grade with temperature (SAE 30 down to 5W-20). Pick the climate on the SERVICE screen (OK on
-  the CLIMATE line, ◀ ▶, OK); only those items change. The schedule itself is `[service]` in `config.toml`.
-- **Dates** need the Pi's clock. There's no daylight-saving switch: the clock follows its **time zone**'s rules by itself (SYSTEM > OK > CLOCK > TIME ZONE, or the web page). Set the time on the dash (SYSTEM > OK > CLOCK > SET TIME: year, month, day, hour, minute, with the maintenance code) or from the web page (Settings > **Sync to this device**, or **Set by hand**), and on a Pi 5 fit the **RTC battery** (Raspberry Pi part, ML-2020, plugs in
+  the CLIMATE line, ◀ ▶, OK). Anyone can look at it, even with the engine running; saving a change asks for the
+  maintenance code. Only those items change. The schedule itself is `[service]` in `config.toml`.
+- **Dates** need the Pi's clock. There's no daylight-saving switch: the clock follows its **time zone**'s rules by itself (SYSTEM > OK > CLOCK > TIME ZONE, or the web page). Set the time with the **engine stopped**, on the dash (SYSTEM > OK > CLOCK > SET TIME: year, month, day, hour, minute, with the maintenance code) or from the web page (Settings > **Sync to this device**, or **Set by hand**), and on a Pi 5 fit the **RTC battery** (Raspberry Pi part, ML-2020, plugs in
   next to the USB-C socket; the setup script turns on its charging). Without it, and without Wi-Fi, the clock
   can be wrong after power-off: everything also records **engine hours**, which are always right.
 - Saved in the hour meter's data folder (`~/bobcat-dash-data`): `events.json` and `service.json`.
