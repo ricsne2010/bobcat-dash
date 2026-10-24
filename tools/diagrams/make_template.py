@@ -1,4 +1,4 @@
-"""Printable 1:1 drilling template for the breakout board (rev 2.8, 162 x 159 mm).
+"""Printable 1:1 drilling template for the breakout board (rev 2.9, 162 x 159 mm).
 
     pip install reportlab
     python3 make_template.py        -> ../../breakout-board/docs/mounting-template.pdf
@@ -19,12 +19,12 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "brea
 BOARD_W, BOARD_H, CORNER = 162.0, 159.0, 3.0
 HOLES = [("H1", 4.5, 4.5), ("H2", 157.5, 4.5), ("H3", 4.5, 142.0), ("H4", 157.5, 142.0),   # board mm, y down
          # rev 2.8: mid-side holes and one near the centre, against vibration
-         ("H15", 94.0, 4.5), ("H16", 72.2, 142.0), ("H17", 4.5, 87.0), ("H18", 157.5, 53.0), ("H19", 70.0, 81.0)]
+         ("H15", 94.0, 4.5), ("H16", 72.2, 142.0), ("H17", 4.5, 87.0), ("H18", 157.5, 58.5), ("H19", 70.0, 81.0)]
 HOLE_D = 3.2
 # Connector footprints (board mm, x0, y0, x1, y1), for planning where the wires come and go.
 _Z = [   # rev 2.7 coordinates; rev 2.8 added a 25 mm strip on top, so they shift down 25 mm below
-    ("TO PI (ribbon)", 30.4, -23.8, 89.9, -13.8), ("TILT", 8.1, -23.6, 24.9, -16.8),
-    ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 34.1, 157.8, 47.9),
+    ("TO PI (ribbon)", 30.4, -23.8, 89.9, -13.8), ("TILT", 151.0, 9.4, 157.8, 26.2),
+    ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 41.1, 157.8, 54.9),
     ("POWER", 3.9, 120.9, 22.3, 134.0), ("5V", 22.9, 120.9, 36.2, 134.0), ("HORN", 36.9, 120.9, 50.2, 134.0),
     ("TACH", 50.9, 120.9, 69.3, 134.0), ("SWITCHES", 75.0, 120.9, 98.4, 134.0), ("FUEL", 98.9, 120.9, 112.2, 134.0),
     ("SILENCE", 112.9, 120.9, 126.2, 134.0), ("LIGHTS", 126.9, 120.9, 145.3, 134.0),
@@ -114,7 +114,7 @@ def main():
                         "Print on US Letter at \"Actual size\" / 100 %  (NOT \"Fit\", \"Shrink oversized pages\" or "
                         "\"Scale to fit\").  Check both rulers before drilling.")
     c.drawCentredString(PAGE_W / 2, PAGE_H - 19 * mm,
-                        "Board rev 2.8, 162 x 159 mm (6.378 x 6.260 in).  Viewed from the FRONT (parts side): tape it to "
+                        "Board rev 2.9, 162 x 159 mm (6.378 x 6.260 in).  Viewed from the FRONT (parts side): tape it to "
                         "the box's back wall as you'll see the board.")
 
     # TOP marker
@@ -216,7 +216,7 @@ def main():
         "4) Mount on 9 M3 standoffs (10 mm or taller, all the same height): the board's back must not touch the box.  "
         "Outer circle = ~6 mm standoff.",
         "Grey zones: plugs and modules.  The Pi ribbon plugs in on the top edge and goes straight up to the lid; COIL "
-        "(high voltage) left, TEMP PROBE right.",
+        "(high voltage) left, TILT and TEMP PROBE right.",
     ]
     c.setFont("Helvetica", 7.2)
     for i, t in enumerate(notes):

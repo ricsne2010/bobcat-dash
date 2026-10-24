@@ -13,7 +13,8 @@ Per day (the local date; "no-date" while the clock isn't set) it adds up:
   crank_s    total time on the starter
   stops      engine stops; hot_stops = stopped while the cool-down reminder still wanted idle time
   h0, h1     engine hour meter at the first and last moment seen that day
-  box_max, amb_min, amb_max, pi_max, v_run_min, v_run_max   (temperatures in C, battery volts)
+  box_max, amb_min, amb_max, pi_max, v_run_min, v_run_max   (temperatures in C, battery volts), each with
+             <name>_t: when it happened (wall clock, only while the clock is set)
 
 Kept in the data folder as usage.json, written safely every save_every_s, at key-off and at exit.
 """
@@ -105,20 +106,30 @@ class UsageLog:
             b = str(int(rpm // self.bin * self.bin))
             r["hist"][b] = r["hist"].get(b, 0.0) + dt
             if volts is not None:
-                r["v_run_min"] = round(min(r.get("v_run_min", volts), volts), 2)
-                r["v_run_max"] = round(max(r.get("v_run_max", volts), volts), 2)
+                self._extreme(r, "v_run_min", volts, min, wall, 2)
+                self._extreme(r, "v_run_max", volts, max, wall, 2)
         if temps:
             if temps.get("box") is not None:
-                r["box_max"] = round(max(r.get("box_max", -99.0), temps["box"]), 1)
+                self._extreme(r, "box_max", temps["box"], max, wall)
             for _, t in temps.get("probes", []):
                 if t is not None:
-                    r["amb_max"] = round(max(r.get("amb_max", -99.0), t), 1)
-                    r["amb_min"] = round(min(r.get("amb_min", 999.0), t), 1)
+                    self._extreme(r, "amb_max", t, max, wall)
+                    self._extreme(r, "amb_min", t, min, wall)
         if pi_temp is not None:
-            r["pi_max"] = round(max(r.get("pi_max", -99.0), pi_temp), 1)
+            self._extreme(r, "pi_max", pi_temp, max, wall)
         self.dirty = True
         if now - self.last_save >= self.save_every:
             self.save(now)
+
+    @staticmethod
+    def _extreme(r, key, v, pick, wall, digits=1):
+        """Keep the day's highest / lowest value, and the time of a new one."""
+        v = round(v, digits)
+        if key not in r or pick(r[key], v) == v and v != r[key]:
+            r[key] = v
+            w = time.time() if wall is None else wall
+            if clock_valid(w):
+                r[key + "_t"] = round(w)
 
     def save(self, now=None):
         self.last_save = time.monotonic() if now is None else now

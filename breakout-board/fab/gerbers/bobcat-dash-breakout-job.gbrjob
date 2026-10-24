@@ -5,7 +5,7 @@
       "Application": "Pcbnew",
       "Version": "10.0.7"
     },
-    "CreationDate": "2026-10-23T14:38:58-07:00"
+    "CreationDate": "2026-10-24T06:09:58-07:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
@@ -19,15 +19,15 @@
     },
     "LayerNumber": 2,
     "BoardThickness": 1.6,
-    "Finish": "None"
+    "Finish": "HAL lead-free"
   },
   "DesignRules": [
     {
       "Layers": "Outer",
       "PadToPad": 0.25,
       "PadToTrack": 0.25,
-      "TrackToTrack": 0.3,
-      "MinLineWidth": 0.4,
+      "TrackToTrack": 0.25,
+      "MinLineWidth": 0.3,
       "TrackToRegion": 0.4,
       "RegionToRegion": 0.4
     }
@@ -72,6 +72,7 @@
   "MaterialStackup": [
     {
       "Type": "Legend",
+      "Color": "White",
       "Name": "Top Silk Screen"
     },
     {
@@ -80,6 +81,7 @@
     },
     {
       "Type": "SolderMask",
+      "Color": "Blue",
       "Thickness": 0.01,
       "Name": "Top Solder Mask"
     },
@@ -102,6 +104,7 @@
     },
     {
       "Type": "SolderMask",
+      "Color": "Blue",
       "Thickness": 0.01,
       "Name": "Bottom Solder Mask"
     },
@@ -111,6 +114,7 @@
     },
     {
       "Type": "Legend",
+      "Color": "White",
       "Name": "Bottom Silk Screen"
     }
   ]

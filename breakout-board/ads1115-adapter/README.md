@@ -21,7 +21,7 @@ on your module match that order before plugging it in.
 |---|---|
 | Size | 42 × 24.7 mm, 2 layers, 1.6 mm. The right-hand 12 mm carries the Project Moon Pi logo, top and back (beside the module, so it stays visible); on the breakout board it sits over the empty space between the ADC module and the TEMP column |
 | Schematic | [docs/schematic.pdf](docs/schematic.pdf) |
-| Gerbers | [fab/ads1115-adapter-gerbers.zip](fab/ads1115-adapter-gerbers.zip): order it with the main board (most makers sell 5 minimum for a few dollars) |
+| Gerbers | [fab/ads1115-adapter-gerbers.zip](fab/ads1115-adapter-gerbers.zip): order it with the main board (most makers sell 5 minimum for a few dollars): **blue solder mask, white silkscreen**, HASL lead-free, 1.6 mm, to match |
 | KiCad files | [kicad/](kicad/) |
 
 ![Top](docs/adapter-top.png) ![Bottom](docs/adapter-bottom.png)

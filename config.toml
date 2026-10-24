@@ -1,4 +1,4 @@
-# S.S.O.M.S (System Status, Operations, and Maintenance System) configuration: Bobcat M700.
+# M.O.S.S. (Maintenance, Operations, and Service System) configuration: Bobcat M700.
 # After editing on the Pi:  sudo systemctl restart bobcat-dash
 
 [display]
@@ -7,7 +7,8 @@ height = 0
 fullscreen = true
 fps = 20
 lamp_test_seconds = 2.0   # all warning tiles flash red at startup, like a bulb check
-name = "S.S.O.M.S"        # top-left of the header: System Status, Operations, and Maintenance System
+name = "M.O.S.S."        # top-left of the header: Maintenance, Operations, and Service System
+clock = "12h"             # menu bar clock: "12h", "24h" or "off" (also SYSTEM > CLOCK and the web page's Settings)
 
 [splash]                  # start-up picture, then it fades into the dash
 enabled = true
@@ -16,7 +17,7 @@ seconds = 3.0             # how long the picture stays up once the dash has star
 fade_seconds = 0.6
 fit = "contain"           # contain = whole picture visible, cover = fill the screen (trims edges)
 background = "auto"       # border colour around a "contain" picture: "auto" (from its edges) or "#000000"
-caption = "System Status, Operations, and Maintenance System"   # shown under the picture with the version and build date; "" = no caption
+caption = "Maintenance, Operations, and Service System"   # shown under the picture with the version and build date; "" = no caption
 sim_boot_seconds = 3.0    # simulator only: extra time on the picture, standing in for the Pi booting
 
 [audio]                   # speaker: startup chime + in-cab alert tones
@@ -334,37 +335,44 @@ oil_grade = "SAE 5W-20"
 
 [[service.item]]
 id = "daily"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "DAILY CHECKS"
 hours = 10
 task = "Engine oil level. Empty the air cleaner dust cap. Clean the oil cooler grill and cooling fins. Tires. Grease all loader pivots."
 [[service.item]]
 id = "engine_oil"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "ENGINE OIL CHANGE"
 hours = 50
 hours_by_climate = { hot = 25 }     # manual p.14: above 90 F change the oil every 25 h (filter every 50 h)
 task = "Drain and refill the engine oil: {oil_grade}. 4 qt with the filter changed, 3.5 qt without."
 [[service.item]]
 id = "oil_filter"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "ENGINE OIL FILTER"
 hours = 50
 task = "Replace the spin-on oil filter (with an oil change)."
 [[service.item]]
 id = "fifty"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "50-HOUR CHECKS"
 hours = 50
 task = "Hydrostatic fluid level. Distributor shaft: 3-5 drops of oil in the lube cup. Crankcase breather hose. Grease control levers and pedals. Drive chain play. Hydraulic tubes and hoses for leaks."
 [[service.item]]
 id = "spark_plugs"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "SPARK PLUGS"
 hours = 200
 task = "Replace the spark plugs, gap 0.030 in."
 [[service.item]]
 id = "fuel_filter"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "FUEL FILTER"
 hours = 200
 task = "Replace the engine fuel filter element."
 [[service.item]]
 id = "three_hundred"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "COOLING FINS + STARTER"
 hours = 300
 task = "Remove the shrouding and clean the engine cooling fins. Remove, clean and service the starting motor."
@@ -382,6 +390,7 @@ days = 365
 task = "Replace the pressure filter (10 micron) and the suction filter (25 micron). Sooner if the FILT light stays on."
 [[service.item]]
 id = "thousand"
+engine = true             # counts toward the web page's ENGINE STATUS
 name = "1000-HOUR SERVICE"
 hours = 1000
 task = "Compression check (clean carbon deposits if called for). Change the hydraulic / hydrostatic fluid."
@@ -398,7 +407,7 @@ save_every_s = 60
 
 [service_mode]            # SERVICE WI-FI: SYSTEM screen > OK. The dash's own Wi-Fi and its service web page.
 enabled = true
-ssid = "SSOMS-BOBCAT-M700"   # the network name (letters, digits, - and _: no dots)
+ssid = "MOSS-BOBCAT-M700"   # the network name (letters, digits, - and _: no dots)
 password = ""             # "" = made up the first time, then kept (shown on the screen). Or 8+ letters/digits.
 minutes = 30              # on for this long, then off by itself (and always at key-off)
 extend_minutes = 30       # the web page's EXTEND button adds this much, as often as you like

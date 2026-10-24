@@ -56,4 +56,4 @@
 "TP6,TP7,TP8","GND","TestPoint:TestPoint_Keystone_5005-5009_Compact","3","test point"
 "U1,U4,U5,U7,U8,U9,U10","PC817","Package_DIP:DIP-4_W7.62mm","7","Optocoupler,Optocoupler: coil tach input,Optocoupler: front light sense,Optocoupler: key sense,Optocoupler: rear light sense,Optocoupler: work light sense"
 "U6","CD4060BE","Package_DIP:DIP-16_W7.62mm","1","Key-off watchdog timer: cuts power ~3 min after key-off if the Pi hasn't"
-"U11","DS18B20","Package_TO_SOT_THT:TO-92_Inline_Wide","1","Board / box air temperature (1-Wire)"
+"U11","DS18B20","Package_TO_SOT_THT:TO-92_Inline_Wide","1","E-BOX TEMP SENSOR: electronics box air temperature (1-Wire)"

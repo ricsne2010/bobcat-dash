@@ -14,6 +14,8 @@ import subprocess
 import threading
 import time
 
+import settings
+
 log = logging.getLogger("pihealth")
 
 TEMP_FILE = "/sys/class/thermal/thermal_zone0/temp"
@@ -96,7 +98,7 @@ class PiHealth:
     def describe(self):
         with self._lock:
             temp = self.sim_temp if self.sim else self.temp
-            return f"{temp:.1f} C" if temp is not None else "no sensor"
+            return settings.fmt(temp, 1, space=True) if temp is not None else "no sensor"
 
     def close(self):
         self._stop.set()

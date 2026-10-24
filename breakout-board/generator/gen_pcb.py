@@ -29,7 +29,8 @@ STEREO_X, STEREO_ROW = 42.0, 26.0      # stereo amp module: centre line (x) and 
 J1_X, J1_Y = 36.0, -17.5               # ribbon header (was 50, 11 before the top strip)
 POD_X = 62.0                           # rev 2.9: button pod plug J17 (pin 1) and its circuits, x 58..106
 LED_DX, LED_DY = J1_X - 50, J1_Y - 11 + 2.5  # power LEDs move with it (2.5 mm lower: room for its label)
-TILT_Y = 99.5                          # rev 2.9: TILT plug (pin 1) on the right-hand strip, under the E-BOX sensor
+TILT_Y = 13.3                          # rev 2.9: TILT plug (pin 1) level with the ADC module's top socket row (J15)
+TEMP_DY = 7.0                          # TEMP column down 7 mm, below the moved H18 (29 mm was tried: +3V3 wouldn't route)
 CONN_Y = H - 10.54                   # harness connectors: plug face flush with the bottom edge
 P = {
     # rev 2.2: H3 moved up like H4, so the row starts 5 mm further left and J5 can grow to 4 pins
@@ -74,8 +75,10 @@ P = {
     "R15": (47, 58, 0),
     # rev 2.6: a latching Micro-Fit 3.0. Rev 2.9: moved to the right-hand strip under the E-BOX sensor (its own
     # TILT box): the three resistors standing in a row at the top, the plug under them, pins top to bottom
-    "R85": (152.5, 86.6, 270), "R83": (155.9, 86.6, 270), "R84": (159.3, 86.6, 270),
+    # (its SDA / SCL join the I2C bus at the ADC socket a few cm away, instead of running down the whole strip)
+    # the plug standing in the strip, its three resistors lying under the logo, each in line with its pin
     "J13": (154.8, TILT_Y, 270),
+    "R85": (138.5, TILT_Y + 2.6, 0), "R83": (138.5, TILT_Y + 6.4, 0), "R84": (138.5, TILT_Y + 10.2, 0),
 }
 # optocoupler channels: one column each, lined up over their connectors
 for x0, name, u, i in [(47, "TACH", "U4", 4), (61, "OIL", "U1", 1)]:
@@ -101,12 +104,12 @@ for i in range(16):
 # H4 moves up from the corner (rev 2.1) to make room for the LIGHTS connector
 P.update({"H1": (4.5, 4.5 - TOP, 0), "H2": (157.5, 4.5 - TOP, 0), "H3": (4.5, 117.0, 0), "H4": (157.5, 117.0, 0)})
 # rev 2.8: extra M3 holes near the middle of each side, against vibration (top one beside the ribbon header)
-P.update({"H15": (94.0, 4.5 - TOP, 0), "H16": (72.2, 117.0, 0), "H17": (4.5, 62.0, 0), "H18": (157.5, 28.0, 0),
+P.update({"H15": (94.0, 4.5 - TOP, 0), "H16": (72.2, 117.0, 0), "H17": (4.5, 62.0, 0), "H18": (157.5, 33.5, 0),
           "H19": (70.0, 56.0, 0)})          # and one near the centre, where the board flexes most
 # rev 2.7: TEMPERATURE column on the new right-hand strip (x 150-162): probe connector, its resistors,
 # the board sensor and its pull-up, top to bottom
-P.update({"J14": (154.8, 38.0, 270), "R87": (153.6, 50.0, 270), "R88": (158.4, 50.0, 270),
-          "U11": (153.5, 62.5, 0), "R86": (156.0, 67.0, 270)})
+P.update({"J14": (154.8, 38.0 + TEMP_DY, 270), "R87": (153.6, 50.0 + TEMP_DY, 270), "R88": (158.4, 50.0 + TEMP_DY, 270),
+          "U11": (153.5, 62.5 + TEMP_DY, 0), "R86": (156.0, 67.0 + TEMP_DY, 270)})
 
 # coil tach input. Rev 2.4: everything that sees the raw coil voltage is in the boxed HIGH VOLTAGE corner on
 # the left edge: its own plug J12 (plug face flush with the edge), R80 -> R81 folded back in two rows, then the
@@ -154,7 +157,8 @@ LIGHT_REF_AT = {}
 for u, r, led, dz in [("U7", "R17", "D18", "D28"), ("U8", "R18", "D19", "D29"), ("U9", "R19", "D20", "D38")]:
     LIGHT_REF_AT.update({u: (3.81, 1.27), r: (3.81, 0.0), led: (1.27, 3.3), dz: (6.8, 0.0)})
 LIGHT_REF_AT.update({"R80": (6.35, 0.0), "R81": (-6.35, 0.0)})        # coil resistors: label on the body
-VERT_REF = {"R83", "R84", "R85", "R86", "R87", "R88", "R89", "R90", "R91", "R92"}                                       # standing resistors: label along the body
+FLAT_REF = {"R83", "R84", "R85"}         # rev 2.9: the TILT resistors lie flat: label along the body
+VERT_REF = {"R86", "R87", "R88", "R89", "R90", "R91", "R92"}                                       # standing resistors: label along the body
 VERT_CAP = {"C12", "C13", "C14", "C15"}
 missing = [p["ref"] for p in PARTS if p["ref"] not in P]
 assert not missing, missing
@@ -251,6 +255,8 @@ for p in PARTS:
         ref.SetPosition(V(x + dx, y + dy)); ref.SetTextAngleDegrees(0)
     if p["ref"] in VERT_REF:
         ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
+    if p["ref"] in FLAT_REF:
+        ref.SetPosition(V(x + 3.81, y)); ref.SetTextAngleDegrees(0); ref.SetTextSize(SZ(0.8, 0.8))
     if p["ref"] in VERT_CAP:            # standing disc capacitors: label along the body
         ref.SetPosition(V(x, y + 2.5)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
     if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "J17"):
@@ -441,17 +447,17 @@ silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
 # rev 2.8: title block in the top strip, beside the logo (the ribbon to the Pi leaves the strip clear above J1)
-silk("S.S.O.M.S", 106.0, -16.0, 1.8, bold=True, align="left")     # System Status, Operations, and Maintenance System
+silk("M.O.S.S.", 106.0, -16.0, 1.8, bold=True, align="left")     # Maintenance, Operations, and Service System
 silk("BREAKOUT BOARD", 106.0, -12.8, 1.5, bold=True, align="left")
 silk("Bobcat M700", 106.0, -9.8, 1.0, bold=True, align="left")
 silk("rev 2.9  2026-10", 106.0, -7.6, 1.0, align="left")
 silk("Project Moon Pi", 106.0, -5.4, 0.9, align="left")
 # rev 2.7: TEMPERATURE column: probe pin names beside the connector
 for i, lab in enumerate(["GND", "DQ", "3V3"]):
-    silk(lab, 158.2, 38.0 + i * 3.0 + 0.4, 0.8, bold=True, align="left")
-silk("PROBE", 155.9, 33.2, 0.8, bold=True)
-silk("E-BOX TEMP", 155.9, 79.8, 0.8, bold=True)       # rev 2.9: E-BOX = the electronics box
-silk("SENSOR", 155.9, 81.4, 0.8, bold=True)
+    silk(lab, 158.2, 38.0 + TEMP_DY + i * 3.0 + 0.4, 0.8, bold=True, align="left")
+silk("PROBE", 155.9, 33.2 + TEMP_DY, 0.8, bold=True)
+silk("E-BOX TEMP", 155.9, 79.8 + TEMP_DY, 0.8, bold=True)       # rev 2.9: E-BOX = the electronics box
+silk("SENSOR", 155.9, 81.4 + TEMP_DY, 0.8, bold=True)
 # rev 2.9: TILT sensor plug on the right-hand strip: pin names beside the pins, like the PROBE plug
 for i, lab in enumerate(["GND", "3V3", "SDA", "SCL"]):
     silk(lab, 158.2, TILT_Y + i * 3.0 + 0.4, 0.8, bold=True, align="left")
@@ -512,8 +518,8 @@ group_box([(149.75, 114.75), (1.2, 114.75), (1.2, 90.6), (128.05, 90.6), (128.05
 # rev 2.7: the board is wider, so the blocks that ran to the old right edge get a right-hand line,
 # and the new TEMPERATURE column has its own outline
 silk_line(149.75, 40.3, 149.75, 114.75)
-group_box(rect(150.4, 31.2, 161.4, 83.4), "TEMP", 155.9)
-group_box(rect(150.4, 84.6, 161.4, 112.4), "TILT (I2C)", 155.9)
+group_box(rect(150.4, 31.2 + TEMP_DY, 161.4, 83.4 + TEMP_DY), "TEMP", 155.9)
+group_box(rect(136.2, TILT_Y - 3.8, 161.4, TILT_Y + 15.4), "TILT (I2C)", 148.8)
 
 # HIGH VOLTAGE corner: double outline, warning triangles, open to the board edge where J12 plugs in
 HV = (0.0, 40.6, 39.6, 57.0)
@@ -574,6 +580,29 @@ n = add_logo(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo_silk
 print("logo:", n, "silkscreen shapes on top")
 
 pcbnew.SaveBoard(OUT, board)
+
+# The layer stack-up, with the colours the board is ordered in: BLUE solder mask, WHITE silkscreen, lead-free HASL
+# (PCBWay's standard finish), 1.6 mm FR4. KiCad's Python can't set it, so it goes into the file as text; the 3D
+# renders show it with  kicad-cli pcb render --use-board-stackup-colors.
+SOLDER_MASK = "Blue"
+_stack = f'''		(stackup
+			(layer "F.SilkS" (type "Top Silk Screen") (color "White"))
+			(layer "F.Paste" (type "Top Solder Paste"))
+			(layer "F.Mask" (type "Top Solder Mask") (color "{SOLDER_MASK}") (thickness 0.01))
+			(layer "F.Cu" (type "copper") (thickness 0.035))
+			(layer "dielectric 1" (type "core") (thickness 1.51) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+			(layer "B.Cu" (type "copper") (thickness 0.035))
+			(layer "B.Mask" (type "Bottom Solder Mask") (color "{SOLDER_MASK}") (thickness 0.01))
+			(layer "B.Paste" (type "Bottom Solder Paste"))
+			(layer "B.SilkS" (type "Bottom Silk Screen") (color "White"))
+			(copper_finish "HAL lead-free")
+			(dielectric_constraints no)
+		)
+'''
+_text = open(OUT).read()
+if "(stackup" not in _text:
+    _i = _text.index("\t(setup\n") + len("\t(setup\n")
+    open(OUT, "w").write(_text[:_i] + _stack + _text[_i:])
 print("placed", len(PARTS), "footprints on", OUT)
 
 # PROJECT_RULES: every footprint comes fresh from KiCad's library on each build, so "doesn't match the library"

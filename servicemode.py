@@ -34,7 +34,7 @@ class ServiceMode:
         self.enabled = sc.get("enabled", True)
         self.on_s = sc.get("minutes", 30) * 60
         self.extend_s = sc.get("extend_minutes", 30) * 60
-        self.ssid = sc.get("ssid", "SSOMS-BOBCAT-M700")
+        self.ssid = sc.get("ssid", "MOSS-BOBCAT-M700")
         self.port = 8080 if sim else sc.get("port", 80)
         self.sim = sim
         self.dir = data_dir

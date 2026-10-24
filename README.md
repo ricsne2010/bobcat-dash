@@ -1,4 +1,4 @@
-# S.S.O.M.S: System Status, Operations, and Maintenance System
+# M.O.S.S.: Maintenance, Operations, and Service System
 
 (The `bobcat-dash` project.) A full-screen gauge display for a 1978 Bobcat M700 skid steer (Wisconsin VH4D 4-cylinder gas engine,
 PerTronix electronic ignition), running on a Raspberry Pi.
@@ -42,6 +42,8 @@ low oil pressure.
 ---
 
 ## Parts list
+
+The full list with part numbers and quantities is the spreadsheet [`docs/bobcat-dash-BOM.xlsx`](docs/bobcat-dash-BOM.xlsx) (made by `tools/diagrams/make_bom.py`). The main parts:
 
 | Part | Notes |
 |---|---|
@@ -276,7 +278,7 @@ Settings are in `[pi_health]` in `config.toml`. On a computer that isn't a Pi th
 ## Charging system (Delco 10SI)
 
 This machine uses a Delco 10SI 3-wire alternator (internal regulator) in place of the old generator and
-external regulator. The wiring is in `wiring-schematic.jpg`, section 7:
+external regulator. The wiring is in [`docs/wiring-schematic.jpg`](docs/wiring-schematic.jpg), section 7:
 
 - **BAT stud:** 8 AWG to the battery + through a fusible link or breaker (10 AWG for a 45 A unit).
 - **Terminal 2 (sense):** 18 AWG to the battery +, the same point as the board's `BAT+`. The regulator then
@@ -403,9 +405,9 @@ To use the big tiles, set `display = "tiles"` and restart the dash. In the simul
 between the two so you can compare them.
 
 **Wiring: feed the lights through the key, with a relay.** The full diagram, with parts, fuse and
-wire sizes, is [`lights-wiring.jpg`](lights-wiring.jpg).
+wire sizes, is [`docs/lights-wiring.jpg`](docs/lights-wiring.jpg).
 
-![Lights wiring](lights-wiring.jpg)
+![Lights wiring](docs/lights-wiring.jpg)
 
 ```
 Battery + ──[15 A fuse, at the battery]──> relay 30
@@ -515,7 +517,7 @@ python3 tools/fit_splash.py ~/Pictures/my_logo.jpg --size 1024x768 --mode cover 
    `video=` setting above. `contain` (default) keeps the whole picture and fills the leftover space with
    a colour taken from the picture's edge; `cover` fills the screen and trims whatever doesn't fit.
    That one file is enough for the dash: it shows it at start-up, settings in `[splash]` in `config.toml`.
-   Under the picture the dash writes **System Status, Operations, and Maintenance System** (S.S.O.M.S) and the software version and build date
+   Under the picture the dash writes **Maintenance, Operations, and Service System** (M.O.S.S.) and the software version and build date
    (`caption` in `[splash]`; the picture is fitted above that text).
 
 2. **Make the boot version of the screen** (picture + text, exactly as the dash shows it):
@@ -755,10 +757,11 @@ Backspace, and a USB keyboard works the same) move between four screens. The gau
 | Screen | Shows |
 |---|---|
 | **GAUGES** | The dash, as always. |
-| **HISTORY** | Every alarm, warning and NO SIGNAL that lasted 2 s or more: date and time, engine hours, what, how long. OK on a line for the details and **CLEAR THIS / CLEAR ALL** (asks first). Clearing only takes alarms off this list: the first line, **ALL ALARMS (archive)**, always shows everything ever recorded, cleared ones marked. Kept through power-off (last 500). |
+| **HISTORY** | Every alarm, warning and NO SIGNAL that lasted 2 s or more: date and time, engine hours, what, how long. OK on a line for the details and **CLOSE · CLEAR THIS · CLEAR ALL** (CLOSE is selected; both clears ask for the maintenance code, then **ARE YOU SURE?** with **NO** selected: pick YES with the arrows to go ahead). Clearing only takes alarms off this list: the first line, **ALL ALARMS (archive)**, always shows everything ever recorded, cleared ones marked. Kept through power-off (last 500). |
 | **SERVICE** | The maintenance schedule from the Bobcat 700 manual, by engine hours (hydraulic items also yearly): what's next and when. The first line is the **CLIMATE** setting. |
-| **SYSTEM** | Engine hours, battery, fuel, every sensor's status, box and outside temperatures, the Pi's temperature and warnings, clock, network, SD card space, saving status, software version. |
+| **SYSTEM** | Engine hours, battery, fuel, every sensor's status, box and outside temperatures, the Pi's temperature and warnings, clock, network, SD card space, saving status, software version. **OK** opens **SERVICE WI-FI · UNITS °F/°C · CLOCK**. |
 
+- **Clock:** the day, date, year and time sit in the menu bar ("Fri Oct 23 2026 · 3:42 PM"; smaller, then just the time, when the bar is busy; amber **CLOCK NOT SET** if it isn't). **12- or 24-hour:** SYSTEM > OK > CLOCK > 12-HOUR/24-HOUR, or the web page's Settings (`[display] clock` is the starting default; `"off"` hides it).
 - **◀ ▶** change screen; on HISTORY and SERVICE, **OK** steps into the list, then ◀ ▶ move and OK opens a line.
   **BACK** steps back out; **hold BACK 2 s** to jump to the gauges from anywhere.
 - **Safety:** a new red alarm always brings the gauges back and **locks the menu buttons** until the alarm is
@@ -766,12 +769,12 @@ Backspace, and a USB keyboard works the same) move between four screens. The gau
   machine in trouble. After 2 minutes without a press the dash goes back to the gauges anyway. Service pop-ups never open with the engine running; while it runs, a due item
   only shows a small `SERVICE DUE` in the header.
 - **Service pop-up at key-on** (engine not running): each item that's due, or coming up (within 5 engine hours;
-  within 2 h for the 10-hour daily checks), with **DETAILS** (the job, step by step), **MARK DONE** (asks to confirm; records the hours and date),
+  within 2 h for the 10-hour daily checks), with **DETAILS** (the job, step by step), **MARK DONE** (maintenance code, then **ARE YOU SURE?** with NO selected; records the hours and date),
   **LATER** (ask again at the next key-on), **+5 HOURS**, and **COMPLETED** (when it was done before).
 - **Climate:** the manual changes the engine oil interval in heat (every **25 h above 90 °F** instead of 50 h)
   and the oil grade with temperature (SAE 30 down to 5W-20). Pick the climate on the SERVICE screen (OK on
   the CLIMATE line, ◀ ▶, OK); only those items change. The schedule itself is `[service]` in `config.toml`.
-- **Dates** need the Pi's clock: on a Pi 5 fit the **RTC battery** (Raspberry Pi part, ML-2020, plugs in
+- **Dates** need the Pi's clock. There's no daylight-saving switch: the clock follows its **time zone**'s rules by itself (SYSTEM > OK > CLOCK > TIME ZONE, or the web page). Set the time on the dash (SYSTEM > OK > CLOCK > SET TIME: year, month, day, hour, minute, with the maintenance code) or from the web page (Settings > **Sync to this device**, or **Set by hand**), and on a Pi 5 fit the **RTC battery** (Raspberry Pi part, ML-2020, plugs in
   next to the USB-C socket; the setup script turns on its charging). Without it, and without Wi-Fi, the clock
   can be wrong after power-off: everything also records **engine hours**, which are always right.
 - Saved in the hour meter's data folder (`~/bobcat-dash-data`): `events.json` and `service.json`.
@@ -781,7 +784,7 @@ Backspace, and a USB keyboard works the same) move between four screens. The gau
 ## Service Wi-Fi, web page and USB stick
 
 **Service Wi-Fi** (no extra button: SYSTEM screen > **OK** > **OK**, engine off, then the **maintenance code**).
-The Pi turns on its own Wi-Fi network and a small web site. The pop-up shows the network name (**SSOMS-BOBCAT-M700**),
+The Pi turns on its own Wi-Fi network and a small web site. The pop-up shows the network name (**MOSS-BOBCAT-M700**),
 its password, a QR code to scan with a phone camera, and the address to open (**http://10.42.0.1**). The menu
 bar shows `WI-FI 27m` while it's on. It stays on for **30 minutes**. **Extend 30 min** on the web page's Status
 adds more, as often as you like. It turns off when the time runs out, at key-off, from the web page, or with OK
@@ -817,6 +820,7 @@ restart. Every wrong code goes into the alarm history as **MAINTENANCE CODE**.
 | **Reports** | The Alarms card opens the alarm list. For 7 days, 30 days, 12 months or all time: engine time split into **full throttle** (normal working), **idle** (warm-up, cool-down), **part throttle** (for warming a cold engine, pump priming or setting timing: flagged amber above 10 %) and **overspeed**, time at each engine speed, engine time by day, key-on time vs engine time, starts and cranks that didn't start, **hot shutdowns** (shut off before the cool-down finished), alarms by type, hottest box and outside temperatures, battery range while running, and a day-by-day table (10 days a page by default, or 20 / 50 / 100; Newer / Older). |
 | **Alarms** | The history list and the archive. |
 | **Service** | Each item: interval, last done, hours left, the job; everything marked done. |
+| **Settings** | **Temperature units** (°F / °C, also on the dash: SYSTEM > OK > UNITS). **Clock:** the dash's time beside this phone's or laptop's, the difference, **Sync to this device** (copies the time and time zone, however far off the dash is) and **Set by hand** (a date and time picker); both need the maintenance code and save the time in the Pi 5's RTC. **Time zone** (Arizona, Pacific, Mountain, Central, Eastern, Alaska, Hawaii, UTC, or this device's): **daylight saving comes with it**, so the clock moves in March and November by itself in zones that use it, and never in Arizona. Sync sets the zone from the phone too. |
 | **Downloads** | Everything as one zip, or each file: `report.html`, CSV files (open in Excel), settings, the dash's data (a backup) and log. |
 | **Software** | Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |
 
@@ -824,7 +828,7 @@ The usage numbers start when this software is installed (`usage.json` in the dat
 in `[usage]`: idle below 1400 rpm, full throttle from 2600 rpm, overspeed above the tach's amber limit.
 
 **USB stick** (FAT32 or exFAT, in the pod's USB socket, engine off). The dash notices the stick by itself, so
-there's no script to run. It copies the same files as the web page's zip to `SSOMS-BOBCAT-M700/<date>_<hours>h/` on
+there's no script to run. It copies the same files as the web page's zip to `MOSS-BOBCAT-M700/<date>_<hours>h/` on
 the stick. If the stick's top folder holds a zip whose name starts with `bobcat-dash` (GitHub's download is
 `bobcat-dash-main.zip`), the dash checks it and asks **INSTALL version x.y.z?** (OK = install after the maintenance code, BACK = no).
 Then it unmounts the stick and says when it's safe to pull out. It copies once per plug-in.
@@ -984,11 +988,14 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `usage.py`: usage recording for the reports; `report.py`: reports, CSV files, the export zip
 - `maintcode.py`: the maintenance code (hash, lockout, `--reset-code`)
 - `servicemode.py`, `web.py`: service Wi-Fi and its web page; `usb.py`: USB stick copy and updates; `updater.py`: install / go back
+- `fonts/`: **B612** (Regular and Bold), the typeface Airbus designed for cockpit displays, used on the dash and the web page (SIL Open Font License, `fonts/OFL.txt`)
 - `sounds/`: `startup.wav`, `alarm.wav`, `warning.wav`, `nosignal.wav`, `keyoff.wav`
 - `tools/make_sounds.py`: regenerates the sounds (needs numpy)
 - `config.toml`: pins, calibration, thresholds
 - `bobcat-dash.service`: starts the dash on boot
-- `lights-wiring.jpg`: wiring diagram for the LED lights (key-controlled relay, fuses, switches, sense wires)
+- `docs/bobcat-dash-BOM.xlsx`: the whole project's parts list (quantities, part numbers, where each is used)
+- `docs/wiring-schematic.jpg`: the hand-wired diagram (sensors, horn, audio, charging), sections referenced throughout
+- `docs/lights-wiring.jpg`: wiring diagram for the LED lights (key-controlled relay, fuses, switches, sense wires)
 - `tools/diagrams/`: scripts that regenerate the wiring diagrams and the BOM spreadsheet
 
 ## License

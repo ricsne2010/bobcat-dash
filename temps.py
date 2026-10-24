@@ -13,6 +13,8 @@ import os
 import threading
 import time
 
+import settings
+
 log = logging.getLogger("temps")
 
 W1_DIR = "/sys/bus/w1/devices"
@@ -108,14 +110,14 @@ class TempStatus:
     def __init__(self, cfg):
         tc = cfg.get("temperature", {})
         self.enabled = tc.get("enabled", True)
-        self.units = tc.get("units", "F").upper()
+        settings.default_units(tc.get("units", "F"))
         self.warn = tc.get("box_warn", 50.0)
         self.alarm = tc.get("box_alarm", 65.0)
         self.ambient = tc.get("ambient", "each")
         self.state = OK
 
     def fmt(self, c):
-        return "--" if c is None else f"{to_units(c, self.units):.0f}°{self.units}"
+        return settings.fmt(c)              # the chosen units (SYSTEM screen / web Settings), live
 
     def update(self, snap):
         """snap: TempSensors.snapshot(). Returns {"box": (state, text), "ambient": [text, ...]} or None."""

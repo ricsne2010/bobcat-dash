@@ -1,5 +1,5 @@
 """USB stick: plug one into the pod's USB socket with the engine off and the dash
-  1. copies everything worth keeping to SSOMS-BOBCAT-M700/<date>_<hours>h/ on the stick (the same files as the web
+  1. copies everything worth keeping to MOSS-BOBCAT-M700/<date>_<hours>h/ on the stick (the same files as the web
      page's "Everything" download: report.html, CSV files, settings, data backup, log),
   2. looks for a software update on the stick: a zip whose name starts with "bobcat-dash" in its top folder
      (GitHub's download is bobcat-dash-main.zip), checks it, and if it's good asks
@@ -28,7 +28,7 @@ log = logging.getLogger("usb")
 
 HELPER = "/usr/local/bin/bobcat-dash-usb"
 MOUNT = "/mnt/bobcat-usb"
-FOLDER = "SSOMS-BOBCAT-M700"
+FOLDER = "MOSS-BOBCAT-M700"
 
 
 class UsbStick:

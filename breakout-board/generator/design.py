@@ -303,10 +303,13 @@ NETCLASSES = {
     "Switched": (1.2, 0.4, ["+12V"]),      # <= 2.5 A (Pi 5 at full load), ~10 C rise on 1 oz
     "Ground": (1.0, 0.3, ["GND"]),          # plus a ground fill on both layers
     "Horn": (1.0, 0.4, ["+12V_HORN", "HORN_DRAIN"]),
-    "Supply": (0.6, 0.3, ["+5V", "+3V3"]),
+    "Supply": (0.6, 0.3, ["+5V", "+3V3"]),   # supply rails: 0.6 mm (the owner's choice: wide supply lines)
     "HighVolt": (0.5, 1.2, ["COIL_IN", "COIL_MID"]),   # coil spikes up to ~400 V: wide spacing
 }
-DEFAULT_TRACK, DEFAULT_CLEAR = 0.4, 0.3
+# Signals (and +3V3): 0.3 mm tracks, 0.25 mm clearance, so one track fits between the Pi header's pins (2.54 mm
+# pitch, ~0.84 mm between pads); 0.4 / 0.3 couldn't, and the header's inner row jammed. Well within any board
+# maker's standard 0.127 mm, and 0.3 mm on 1 oz copper still carries over 1 A.
+DEFAULT_TRACK, DEFAULT_CLEAR = 0.3, 0.25
 
 
 def nets():

@@ -10,6 +10,7 @@ USB stick: plugged in with the engine off, its pop-up opens by itself (usb.py).
 Safety: a new red alarm always brings the gauges back, pop-ups never open with the engine running, and
 after home_after_s without a button press the dash goes back to the gauges on its own.
 """
+import datetime
 import os
 import shutil
 import socket
@@ -17,6 +18,7 @@ import time
 
 import pygame
 
+import settings
 from maintcode import weak
 from service import DUE, SOON, clock_valid
 
@@ -42,7 +44,11 @@ LEVEL_WORD = {"alarm": "ALARM", "warn": "WARNING", "unknown": "NO SIGNAL"}
 PAGES = ("gauges", "history", "service", "system")
 TITLES = {"gauges": "GAUGES", "history": "HISTORY", "service": "SERVICE", "system": "SYSTEM"}
 # DETAILS first: an OK pressed without looking only shows the job, it never marks it done
-EV_ACTIONS = (("clear", "CLEAR THIS"), ("all", "CLEAR ALL"), ("close", "CLOSE"))
+# CLOSE first and selected; the rows stop at their ends (no wrap-round), so one stray press can't reach CLEAR ALL
+EV_ACTIONS = (("close", "CLOSE"), ("clear", "CLEAR THIS"), ("all", "CLEAR ALL"))
+SURE = ("NO", "YES")
+CLOCK_FIELDS = (("YEAR", 2025, 2099), ("MONTH", 1, 12), ("DAY", 1, 31), ("HOUR", 0, 23), ("MINUTE", 0, 59))
+MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")           # "are you sure?" pop-ups: NO is selected; YES needs a deliberate arrow press
 ACTIONS = (("info", "DETAILS"), ("done", "MARK DONE"), ("later", "LATER"), ("later5", "+5 HOURS"), ("hist", "COMPLETED"))
 
 
@@ -129,8 +135,8 @@ class Screens:
             self.go_home()
         elif b == "ok" and self.page in ("history", "service") and n:
             self.listing, self.cursor = True, 0
-        elif b == "ok" and self.page == "system" and ctx.get("svcmode"):
-            self.modal = {"kind": "wifi"}
+        elif b == "ok" and self.page == "system":
+            self.modal = {"kind": "sysmenu", "act": 0}
 
     def _list_len(self, ctx):
         if self.page == "history":
@@ -152,7 +158,7 @@ class Screens:
             else:
                 evs = ctx["events"].newest_first()
                 if self.cursor - 1 < len(evs):
-                    self.modal = {"kind": "event", "ev": evs[self.cursor - 1], "archive": False, "act": 2}
+                    self.modal = {"kind": "event", "ev": evs[self.cursor - 1], "archive": False, "act": 0}
         elif self.page == "service":
             if self.cursor == 0:
                 ids = [c["id"] for c in svc.climates]
@@ -167,7 +173,7 @@ class Screens:
         k = m["kind"]
         if k in ("announce", "actions"):
             if b in ("left", "right"):
-                m["act"] = (m["act"] + (1 if b == "right" else -1)) % len(ACTIONS)
+                m["act"] = max(0, min(len(ACTIONS) - 1, m["act"] + (1 if b == "right" else -1)))
             elif b == "back":
                 if k == "announce":         # closing the pop-up = ask again at the next key-on
                     for it, *_ in m["items"][m["i"]:]:
@@ -178,7 +184,7 @@ class Screens:
                 act = ACTIONS[m["act"]][0]
                 if act == "done":
                     self._need_code(ctx, "to mark service done",
-                                    lambda: setattr(self, "modal", {"kind": "confirm", "item": it, "back": m}), m)
+                                    lambda: setattr(self, "modal", {"kind": "confirm", "item": it, "back": m, "sel": 0}), m)
                     return
                 if act == "hist":
                     self.modal = {"kind": "completed", "item": it, "back": m}
@@ -188,13 +194,26 @@ class Screens:
                     return
                 svc.later(it["id"], hours, next_start=(act == "later"))
                 self._next_item(m)
-        elif k == "confirm":
-            if b == "ok":
+        elif k in ("confirm", "clear_one", "clear_all"):       # "are you sure?": NO unless YES is picked
+            if b in ("left", "right"):
+                m["sel"] = 1 if b == "right" else 0
+            elif b == "back" or (b == "ok" and m["sel"] == 0):
+                self.modal = m["back"]
+                if self.modal and self.modal.get("kind") == "event":
+                    self.modal["act"] = 0              # backed out: the highlight goes back to CLOSE
+            elif b == "ok" and k == "confirm":
                 svc.mark_done(m["item"]["id"], hours)
                 self.modal = m["back"]
                 self._next_item(self.modal)
-            elif b == "back":
-                self.modal = m["back"]
+            elif b == "ok" and k == "clear_one":
+                ctx["events"].clear(m["ev"])
+                self.modal = None
+                self.cursor = min(self.cursor, len(ctx["events"].newest_first()))
+                if self.cursor == 0:
+                    self.listing = False
+            elif b == "ok" and k == "clear_all":
+                ctx["events"].clear_all()
+                self.modal, self.listing, self.cursor = None, False, 0
         elif k in ("completed", "details"):
             if b in ("back", "ok"):
                 self.modal = m["back"]
@@ -211,26 +230,102 @@ class Screens:
             if m["archive"] or b == "back":
                 self.modal = None
             elif b in ("left", "right"):
-                m["act"] = (m["act"] + (1 if b == "right" else -1)) % len(EV_ACTIONS)
+                m["act"] = max(0, min(len(EV_ACTIONS) - 1, m["act"] + (1 if b == "right" else -1)))
             elif b == "ok":
                 act = EV_ACTIONS[m["act"]][0]
                 if act == "clear":
-                    def clear_one():
-                        ctx["events"].clear(m["ev"])
-                        self.modal = None
-                        self.cursor = min(self.cursor, len(ctx["events"].newest_first()))
-                        if self.cursor == 0:
-                            self.listing = False
-                    self._need_code(ctx, "to clear alarms", clear_one, m)
+                    self._need_code(ctx, "to clear alarms",
+                                    lambda: setattr(self, "modal", {"kind": "clear_one", "ev": m["ev"], "back": m, "sel": 0}), m)
                 elif act == "all":
                     self._need_code(ctx, "to clear alarms",
-                                    lambda: setattr(self, "modal", {"kind": "clear_all", "back": m}), m)
+                                    lambda: setattr(self, "modal", {"kind": "clear_all", "back": m, "sel": 0}), m)
                 else:
                     self.modal = None
+        elif k == "sysmenu":
+            if b in ("left", "right"):
+                m["act"] = max(0, min(2, m["act"] + (1 if b == "right" else -1)))
+            elif b == "back":
+                self.modal = None
+            elif b == "ok" and m["act"] == 0:
+                self.modal = {"kind": "wifi", "back": m}
+            elif b == "ok" and m["act"] == 1:
+                settings.set_units("C" if settings.units() == "F" else "F")
+            elif b == "ok" and m["act"] == 2:
+                self.modal = {"kind": "clock", "back": m, "act": 0}
+        elif k == "clock":
+            if b in ("left", "right"):
+                m["act"] = max(0, min(2, m.get("act", 0) + (1 if b == "right" else -1)))
+            elif b == "back":
+                self.modal = m["back"]
+            elif b == "ok" and m.get("act") == 2:                                   # 12 / 24 HOUR
+                settings.set_clock_fmt("24h" if settings.clock_fmt() == "12h" else "12h")
+            elif b == "ok" and m.get("act") == 1 and not ctx["st"]["running"]:     # TIME ZONE
+                names = [z for z, _ in settings.TIME_ZONES]
+                cur = settings.zone_name()
+                picker = {"kind": "tzpick", "back": m, "i": names.index(cur) if cur in names else 0}
+                self._need_code(ctx, "to change the time zone", lambda: setattr(self, "modal", picker), m)
+            elif b == "ok" and not ctx["st"]["running"]:          # SET TIME: by hand
+                t = time.localtime() if clock_valid() else time.localtime(time.mktime((2026, 1, 1, 12, 0, 0, 0, 0, -1)))
+                setter = {"kind": "clockset", "back": m, "f": 0,
+                          "v": [t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min]}
+                self._need_code(ctx, "to set the clock", lambda: setattr(self, "modal", setter), m)
+        elif k == "clockset":
+            lo, hi = CLOCK_FIELDS[m["f"]][1], CLOCK_FIELDS[m["f"]][2]
+            if m["f"] == 2:                                      # days in that month
+                y, mo = m["v"][0], m["v"][1]
+                hi = (datetime.date(y + mo // 12, mo % 12 + 1, 1) - datetime.timedelta(days=1)).day
+            if b in ("left", "right"):
+                v = m["v"][m["f"]] + (1 if b == "right" else -1)
+                m["v"][m["f"]] = lo + (v - lo) % (hi - lo + 1)
+            elif b == "back":
+                if m["f"]:
+                    m["f"] -= 1
+                else:
+                    self.modal = m["back"]
+            elif b == "ok":
+                if m["f"] < len(CLOCK_FIELDS) - 1:
+                    m["f"] += 1
+                    y, mo = m["v"][0], m["v"][1]                 # a 31st carried into a shorter month
+                    last = (datetime.date(y + mo // 12, mo % 12 + 1, 1) - datetime.timedelta(days=1)).day
+                    m["v"][2] = min(m["v"][2], last)
+                else:
+                    self.modal = {"kind": "clocksure", "back": m, "sel": 0, "v": list(m["v"])}
+        elif k == "tzpick":
+            n = len(settings.TIME_ZONES)
+            if b in ("left", "right"):
+                m["i"] = (m["i"] + (1 if b == "right" else -1)) % n
+            elif b == "back":
+                self.modal = m["back"]
+            elif b == "ok":
+                self.modal = {"kind": "tzsure", "back": m, "sel": 0, "zone": settings.TIME_ZONES[m["i"]]}
+        elif k == "tzsure":
+            if b in ("left", "right"):
+                m["sel"] = 1 if b == "right" else 0
+            elif b == "back" or (b == "ok" and m["sel"] == 0):
+                self.modal = m["back"]
+            elif b == "ok":
+                ok_, msg = ctx["set_clock"](None, m["zone"][0])
+                if ok_:
+                    ctx["events"].note("CLOCK", "warn", f"time zone set to {m['zone'][0]} on the dash", ctx["hours"])
+                self.modal = {"kind": "clockdone", "ok": ok_, "msg": msg, "back": m["back"]["back"]}
+        elif k == "clocksure":
+            if b in ("left", "right"):
+                m["sel"] = 1 if b == "right" else 0
+            elif b == "back" or (b == "ok" and m["sel"] == 0):
+                self.modal = m["back"]
+            elif b == "ok":
+                y, mo, dd, hh, mi = m["v"]
+                ok_, msg = ctx["set_clock"](time.mktime((y, mo, dd, hh, mi, 0, 0, 0, -1)))
+                if ok_:
+                    ctx["events"].note("CLOCK", "warn", "set by hand on the dash", ctx["hours"])
+                self.modal = {"kind": "clockdone", "ok": ok_, "msg": msg, "back": m["back"]["back"]}
+        elif k == "clockdone":
+            if b in ("ok", "back"):
+                self.modal = m["back"]
         elif k == "wifi":
             sm, running = ctx["svcmode"], ctx["st"]["running"]
             if b == "back":
-                self.modal = None
+                self.modal = m.get("back")
             elif b == "ok" and sm.state == sm.ON:
                 sm.turn_off("turned off on the dash")
             elif b == "ok" and sm.state in (sm.OFF, sm.FAILED) and not running:
@@ -257,12 +352,6 @@ class Screens:
         elif k == "recovery":
             if b == "ok":
                 m["then"]()
-        elif k == "clear_all":
-            if b == "ok":
-                ctx["events"].clear_all()
-                self.modal, self.listing, self.cursor = None, False, 0
-            elif b == "back":
-                self.modal = m["back"]
 
     # -- the maintenance code
 
@@ -443,6 +532,7 @@ class Screens:
                 d.screen.blit(cap, cap.get_rect(center=r.center))
                 x = r.left
             x -= d.px(26)
+        return x + d.px(26)                 # left end of the hints
 
     def draw_bar(self, d):
         """Screen tabs along the bottom, and what the buttons do here."""
@@ -465,6 +555,7 @@ class Screens:
             r.midright = (d.R(1010, 0, 0, 0).x, bar.centery)
             pygame.draw.rect(d.screen, RED, r, border_radius=d.px(6))
             d.screen.blit(msg, msg.get_rect(center=r.center))
+            self._bar_right = r.left
             return
         if self.page == "gauges":
             hints = [("lr", "other screens")]
@@ -475,10 +566,10 @@ class Screens:
         elif self.page in ("history", "service"):
             hints = [("lr", "screen"), ("ok", "select"), ("back", "gauges")]
         elif self.page == "system":
-            hints = [("lr", "screen"), ("ok", "Wi-Fi"), ("back", "gauges")]
+            hints = [("lr", "screen"), ("ok", "settings"), ("back", "gauges")]
         else:
             hints = [("lr", "screen"), ("back", "gauges")]
-        self._hints(d, hints, bar.centery)
+        self._bar_right = self._hints(d, hints, bar.centery)
 
     def _draw_pills(self, d, ctx):
         """WI-FI 27 min / USB ... next to the screen tabs, while they're on."""
@@ -501,6 +592,25 @@ class Screens:
             pygame.draw.rect(d.screen, col, r, border_radius=d.px(6))
             d.screen.blit(t, t.get_rect(center=r.center))
             x = r.right
+        self._draw_clock(d, x, getattr(self, "_bar_right", x), cy)
+
+    def _draw_clock(self, d, left, right, cy):
+        """Day, date and time in the menu bar's free space (just the time when the date doesn't fit)."""
+        if settings.clock_fmt() == "off" or right - left < d.px(90):
+            return
+        if not clock_valid():
+            choices = [("CLOCK NOT SET", 26, AMBER), ("NO CLOCK", 24, AMBER)]
+        else:
+            now = time.localtime()
+            tm = settings.hhmm(now)
+            full = time.strftime("%a %b ", now) + f"{now.tm_mday} {now.tm_year}  ·  " + tm
+            choices = [(full, 26, TEXT), (full, 23, TEXT), (full, 21, TEXT), (time.strftime("%b ", now) + f"{now.tm_mday} {now.tm_year}  ·  " + tm, 23, TEXT),
+                       (tm, 26, TEXT)]
+        for text, size, col in choices:
+            t = d.font(size).render(text, True, col)
+            if t.get_width() <= right - left - d.px(36):
+                d.screen.blit(t, t.get_rect(center=((left + right) // 2, cy)))
+                return
 
     def _rows(self, d, top, rows, row_h, render):
         """A scrolling list: rows drawn by render(rect, row, selected), the highlight kept in view."""
@@ -728,12 +838,12 @@ class Screens:
             self._buttons_row(d, box, [a[1] for a in ACTIONS], m["act"], box.y / d.sy + 300)
             self._hints(d, [("lr", "choose"), ("ok", "do it"), ("back", "close")], box.bottom - d.px(28), right=box.right - d.px(24))
         elif k == "confirm":
-            box = self._box(d, 700, 280, GREEN)
-            d.text("MARK AS DONE?", 40, GREEN, midtop=(box.centerx, box.y + d.px(24)))
-            d.text(m["item"]["name"], 36, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(84)))
+            box = self._box(d, 720, 380, GREEN)
+            d.text("ARE YOU SURE?", 40, GREEN, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Mark {m['item']['name']} as done", 32, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(80)))
             d.text(f"at {hours:.1f} engine hours" + (f", {time.strftime('%b %d %Y')}" if clock_valid() else ""),
-                   30, DIM, midtop=(box.centerx, box.y + d.px(136)))
-            self._hints(d, [("ok", "yes, done"), ("back", "no")], box.bottom - d.px(36), right=box.right - d.px(24))
+                   28, DIM, midtop=(box.centerx, box.y + d.px(128)))
+            self._sure_row(d, box, m)
         elif k == "details":
             it = m["item"]
             box = self._box(d, 880, 600, TEXT)
@@ -801,7 +911,8 @@ class Screens:
             d.text(f"{ev['what']}  {LEVEL_WORD.get(ev['level'], '')}", 40, col, max_w=box.w - d.px(40),
                    midtop=(box.centerx, box.y + d.px(24)))
             lines = [("What", ev.get("detail") or "-"), ("When", when(ev.get("t"))),
-                     ("Engine hours", f"{ev['h']:.1f}"), ("Lasted", dur(ev.get("dur_s")))]
+                     ("Engine hours", f"{ev['h']:.1f}"),
+                     ("Lasted", "-" if ev.get("src") == "note" else dur(ev.get("dur_s")))]
             if ev.get("cleared"):
                 lines.append(("In the history list", "cleared"))
             for i, (a_, b_) in enumerate(lines):
@@ -814,6 +925,83 @@ class Screens:
                 self._buttons_row(d, box, [a_[1] for a_ in EV_ACTIONS], m["act"], box.y / d.sy + 300)
                 self._hints(d, [("lr", "choose"), ("ok", "do it"), ("back", "close")], box.bottom - d.px(28),
                             right=box.right - d.px(24))
+        elif k == "sysmenu":
+            box = self._box(d, 820, 330, TEXT)
+            d.text("SYSTEM", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
+            notes = ["the dash's own Wi-Fi and web page", f"temperatures in °{settings.units()}: OK switches",
+                     time.strftime("%b %d %Y  %H:%M") if clock_valid() else "NOT SET"]
+            d.text(notes[m["act"]], 28, AMBER if m["act"] == 2 and not clock_valid() else DIM,
+                   midtop=(box.centerx, box.y + d.px(86)))
+            self._buttons_row(d, box, ["SERVICE WI-FI", f"UNITS  °{settings.units()}", "CLOCK"], m["act"], box.y / d.sy + 160)
+            self._hints(d, [("lr", "choose"), ("ok", "open" if m["act"] != 1 else "switch"), ("back", "close")],
+                        box.bottom - d.px(32), right=box.right - d.px(24))
+        elif k == "clock":
+            box = self._box(d, 860, 470, TEXT)
+            d.text("CLOCK", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
+            ok_ = clock_valid()
+            d.text(time.strftime("%a %b %d %Y   ") + settings.hhmm(seconds=True) if ok_ else "NOT SET", 40,
+                   TEXT if ok_ else AMBER, midtop=(box.centerx, box.y + d.px(84)))
+            d.text(settings.zone_text(), 26, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(142)))
+            self._wrap(d, "Daylight saving follows the time zone by itself. A phone or laptop can set both at once: "
+                          "SERVICE WI-FI, then the web page's Settings > Sync to this device.", box, box.y + d.px(190), 24, DIM, 3)
+            fmt_btn = "24-HOUR" if settings.clock_fmt() == "24h" else "12-HOUR"
+            self._buttons_row(d, box, ["SET TIME", "TIME ZONE", fmt_btn], m.get("act", 0), box.y / d.sy + 300)
+            act = m.get("act", 0)
+            self._hints(d, [("lr", "choose"), ("ok", "switch" if act == 2 else "open"), ("back", "back")],
+                        box.bottom - d.px(32), right=box.right - d.px(24))
+        elif k == "tzpick":
+            zone, label = settings.TIME_ZONES[m["i"]]
+            box = self._box(d, 820, 400, TEXT)
+            d.text("TIME ZONE", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
+            cy = box.y + d.px(130)
+            self._tri(d, box.x + d.px(30), cy, 14, "left", TEXT)
+            self._tri(d, box.right - d.px(46), cy, 14, "right", TEXT)
+            d.text(label, 48, TEXT, center=(box.centerx, cy))
+            d.text(zone + ("   (now)" if zone == settings.zone_name() else ""), 28, DIM, center=(box.centerx, cy + d.px(52)))
+            dst = settings.zone_dst(zone)
+            d.text("daylight saving: changes by itself" if dst else "no daylight saving", 28, AMBER if dst else GREEN,
+                   center=(box.centerx, cy + d.px(100)))
+            self._hints(d, [("lr", "choose"), ("ok", "use this"), ("back", "back")], box.bottom - d.px(32),
+                        right=box.right - d.px(24))
+        elif k == "tzsure":
+            zone, label = m["zone"]
+            box = self._box(d, 760, 360, AMBER)
+            d.text("ARE YOU SURE?", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Time zone: {label} ({zone})", 32, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(84)))
+            d.text("The clock shows that zone's local time from now on.", 26, DIM, midtop=(box.centerx, box.y + d.px(130)))
+            self._sure_row(d, box, m)
+        elif k == "clockset":
+            box = self._box(d, 860, 400, TEXT)
+            d.text("SET THE CLOCK", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Local time, {time.strftime('%Z')}", 26, DIM, midtop=(box.centerx, box.y + d.px(76)))
+            shown = [str(m["v"][0]), MONTHS[m["v"][1] - 1], f"{m['v'][2]:02d}", f"{m['v'][3]:02d}", f"{m['v'][4]:02d}"]
+            widths = (150, 120, 100, 100, 100)
+            gap = 18
+            x = box.centerx - d.px((sum(widths) + gap * 4) / 2)
+            for i, (txt, w) in enumerate(zip(shown, widths)):
+                r = pygame.Rect(x, box.y + d.px(130), d.px(w), d.px(100))
+                cur = i == m["f"]
+                pygame.draw.rect(d.screen, SEL if cur else ROW, r, border_radius=d.px(10))
+                if cur:
+                    pygame.draw.rect(d.screen, TEXT, r, width=d.px(3), border_radius=d.px(10))
+                d.text(txt, 52, TEXT, center=r.center)
+                d.text(CLOCK_FIELDS[i][0], 20, TEXT if cur else DIM, midtop=(r.centerx, r.bottom + d.px(8)))
+                x = r.right + d.px(gap)
+            self._hints(d, [("lr", "change"), ("ok", "next" if m["f"] < 4 else "done"), ("back", "back")],
+                        box.bottom - d.px(32), right=box.right - d.px(24))
+        elif k == "clocksure":
+            y, mo, dd, hh, mi = m["v"]
+            box = self._box(d, 760, 380, AMBER)
+            d.text("ARE YOU SURE?", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Set the clock to  {dd} {MONTHS[mo - 1].title()} {y}  {hh:02d}:{mi:02d}", 32, TEXT,
+                   max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(84)))
+            d.text("Every record from now on is dated by this clock.", 26, DIM, midtop=(box.centerx, box.y + d.px(134)))
+            self._sure_row(d, box, m)
+        elif k == "clockdone":
+            box = self._box(d, 760, 300, GREEN if m["ok"] else RED)
+            d.text("CLOCK SET" if m["ok"] else "NOT SET", 40, GREEN if m["ok"] else RED, midtop=(box.centerx, box.y + d.px(22)))
+            self._wrap(d, m["msg"], box, box.y + d.px(100), 28, TEXT, 3)
+            self._hints(d, [("ok", "done")], box.bottom - d.px(32), right=box.right - d.px(24))
         elif k == "wifi":
             self._draw_wifi(d, ctx)
         elif k == "code":
@@ -822,14 +1010,29 @@ class Screens:
             self._draw_recovery(d, ctx)
         elif k == "usb":
             self._draw_usb(d, ctx)
+        elif k == "clear_one":
+            ev = m["ev"]
+            box = self._box(d, 720, 380, AMBER)
+            d.text("ARE YOU SURE?", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Clear this alarm: {ev['what']}", 32, TEXT, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(80)))
+            d.text(f"{when(ev.get('t'), '%b %d %H:%M')}  ·  {ev['h']:.1f} h  ·  {ev.get('detail') or ''}", 26, DIM,
+                   max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(126)))
+            d.text("It leaves the history list and stays in ALL ALARMS.", 26, DIM, midtop=(box.centerx, box.y + d.px(162)))
+            self._sure_row(d, box, m)
         elif k == "clear_all":
             n = len(ctx["events"].newest_first())
-            box = self._box(d, 700, 280, AMBER)
-            d.text("CLEAR ALL ALARMS?", 40, AMBER, midtop=(box.centerx, box.y + d.px(24)))
-            d.text(f"{n} alarm{'s leave' if n != 1 else ' leaves'} the history list.", 30, TEXT,
-                   midtop=(box.centerx, box.y + d.px(88)))
-            d.text("They stay in ALL ALARMS (the archive).", 28, DIM, midtop=(box.centerx, box.y + d.px(130)))
-            self._hints(d, [("ok", "yes, clear"), ("back", "no")], box.bottom - d.px(36), right=box.right - d.px(24))
+            box = self._box(d, 720, 380, RED)
+            d.text("ARE YOU SURE?", 40, RED, midtop=(box.centerx, box.y + d.px(22)))
+            d.text(f"Clear ALL {n} alarm{'s' if n != 1 else ''} from the history list", 32, TEXT, max_w=box.w - d.px(40),
+                   midtop=(box.centerx, box.y + d.px(80)))
+            d.text("They stay in ALL ALARMS (the archive).", 26, DIM, midtop=(box.centerx, box.y + d.px(126)))
+            self._sure_row(d, box, m)
+
+    def _sure_row(self, d, box, m):
+        """NO / YES buttons (NO selected until an arrow picks YES) and the hints under them."""
+        self._buttons_row(d, box, list(SURE), m["sel"], box.y / d.sy + 220)
+        self._hints(d, [("lr", "choose"), ("ok", "YES: do it" if m["sel"] else "NO: back out"), ("back", "back out")],
+                    box.bottom - d.px(32), right=box.right - d.px(24))
 
     def _qr_code(self, text, px):
         """A QR code surface (cached), or None without python3-qrcode."""

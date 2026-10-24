@@ -933,7 +933,7 @@ for a, b in segs:
 
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
-       [Sym("title_block"), [Sym("title"), "S.S.O.M.S Breakout Board - Bobcat M700"], [Sym("date"), "2026-10-22"],
+       [Sym("title_block"), [Sym("title"), "M.O.S.S. Breakout Board - Bobcat M700"], [Sym("date"), "2026-10-22"],
         [Sym("rev"), "2.9"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \

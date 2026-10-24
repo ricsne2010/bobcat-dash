@@ -6,6 +6,8 @@ goes. In the simulator it just follows the simulated Pi temperature (I key = Pi 
 """
 import logging
 
+import settings
+
 log = logging.getLogger("fan")
 
 
@@ -44,7 +46,8 @@ class PodFan:
     def describe(self):
         if not self.enabled:
             return "not fitted"
-        return f"ON (off below {self.off_c:.0f} C)" if self.on else f"off (on at {self.on_c:.0f} C)"
+        return (f"ON (off below {settings.fmt(self.off_c, space=True)})" if self.on
+                else f"off (on at {settings.fmt(self.on_c, space=True)})")
 
     def close(self):
         if self.dev:

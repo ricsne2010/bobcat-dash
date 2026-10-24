@@ -11,6 +11,7 @@ SECTIONS = [
  ("COMPUTER + DISPLAY", [
   (1, "Raspberry Pi", "Pi 4 Model B (2 GB+) or Pi 5", "Raspberry Pi 4B / Pi 5", "Sch. 2", "Pi 5 needs a 5 A supply"),
   (1, "microSD card", "16–32 GB, high-endurance, A1/A2", "SanDisk High Endurance", "—", "Do NOT enable the overlay file system: it would erase the engine hours"),
+  (1, "Pi 5 RTC battery", "Rechargeable lithium-manganese coin cell, 2-pin JST-SH lead (Pi 5 only)", "Raspberry Pi RTC battery (Panasonic ML-2020)", "README: Screens / Dates", "Plugs into the Pi 5's BAT socket; keeps the clock through key-off; setup-pi.sh turns its charging on. Never a CR2032 (not rechargeable). Rated to 60 °C"),
   (1, "Weatherproof HDMI monitor", "12 V powered, IP65+, ≥800 nits, 1024×768 or similar", "—", "README: Monitor", "Sunlight-readable strongly recommended. Note its native resolution for the splash + video= setting"),
   (1, "HDMI cable", "Micro-HDMI to HDMI, long enough to reach the monitor (≤5 m)", "—", "README: Monitor", "Pi 4/5 use micro-HDMI. Strain-relieve both ends"),
   (1, "Inline fuse holder + fuse", "Blade type, size from the monitor's manual (typ. 3–5 A)", "—", "README: Monitor", "Key-switched 12 V feed to the monitor. Ground the monitor at the board's ground point"),
@@ -61,14 +62,14 @@ SECTIONS = [
   (1, "IC socket", "DIP-16, 7.62 mm", "—", "Board README", "Optional, for U6 (CD4060)"),
   (2, "Jumper shunt", "2.54 mm", "—", "Board README", "JP1 / JP2 fuel mode"),
  ]),
- ("LIGHTS (feed + sensing): see lights-wiring.jpg", [
-  (1, "Automotive relay", "12 V mini ISO, 4-pin, normally open, 30/40 A, WITH suppression diode", "—", "lights-wiring.jpg", "Key ON/RUN drives the coil (86 = +, 85 = ground). Feeds the light switches"),
-  (1, "Relay socket / pigtail", "Weatherproof, for a 4-pin mini ISO relay", "—", "lights-wiring.jpg", "Or use a sealed fuse + relay box instead of this, the relay fuse and the two branch fuses"),
-  (1, "Inline fuse holder + fuse", "Blade, 15 A (size for all the lights)", "—", "lights-wiring.jpg", "Battery + to relay 30, within 18 in of the battery"),
-  (1, "Inline fuse holder + fuse", "Blade, 3 A", "—", "lights-wiring.jpg", "Key ON/RUN to relay 86 (coil)"),
-  (2, "Inline fuse holder + fuse", "Blade, FRONT 10 A and REAR/WORK 7.5 A (size to your lights)", "—", "lights-wiring.jpg", "Relay 87 to each switch. Fuse = watts ÷ 12 × 1.25"),
-  (3, "Inline fuse holder + fuse", "Blade, 1 A", "—", "lights-wiring.jpg", "One per sense wire (front, rear, work), at the tap on the lamp side of the switch"),
-  (2, "Light switch", "≥15 A at 12 V DC, sealed: 1 × SPST on/off, 1 × SPDT ON-OFF-ON", "—", "lights-wiring.jpg", "Front on/off; back up = rear, middle = off, down = work"),
+ ("LIGHTS (feed + sensing): see docs/lights-wiring.jpg", [
+  (1, "Automotive relay", "12 V mini ISO, 4-pin, normally open, 30/40 A, WITH suppression diode", "—", "docs/lights-wiring.jpg", "Key ON/RUN drives the coil (86 = +, 85 = ground). Feeds the light switches"),
+  (1, "Relay socket / pigtail", "Weatherproof, for a 4-pin mini ISO relay", "—", "docs/lights-wiring.jpg", "Or use a sealed fuse + relay box instead of this, the relay fuse and the two branch fuses"),
+  (1, "Inline fuse holder + fuse", "Blade, 15 A (size for all the lights)", "—", "docs/lights-wiring.jpg", "Battery + to relay 30, within 18 in of the battery"),
+  (1, "Inline fuse holder + fuse", "Blade, 3 A", "—", "docs/lights-wiring.jpg", "Key ON/RUN to relay 86 (coil)"),
+  (2, "Inline fuse holder + fuse", "Blade, FRONT 10 A and REAR/WORK 7.5 A (size to your lights)", "—", "docs/lights-wiring.jpg", "Relay 87 to each switch. Fuse = watts ÷ 12 × 1.25"),
+  (3, "Inline fuse holder + fuse", "Blade, 1 A", "—", "docs/lights-wiring.jpg", "One per sense wire (front, rear, work), at the tap on the lamp side of the switch"),
+  (2, "Light switch", "≥15 A at 12 V DC, sealed: 1 × SPST on/off, 1 × SPDT ON-OFF-ON", "—", "docs/lights-wiring.jpg", "Front on/off; back up = rear, middle = off, down = work"),
  ]),
  ("MACHINE ANGLE (roll / pitch): README, Machine angle", [
   (1, "Accelerometer + gyro board", "LSM6DSOX 6-DoF, I2C, 3.3 V (or LSM6DS3TR-C, Adafruit 4503)", "Adafruit 4438", "README: Machine angle", "Mount rigidly to the frame, flat, X arrow forward. I2C address 0x6A"),
@@ -89,7 +90,7 @@ SECTIONS = [
   (1, "Exhaust fan", "40 x 40 x 10 mm, 12 V", "any (two-wire)", "enclosure/button-pod", "Back wall of the pod; switched by the board (Q5)"),
   (1, "Cable gland", "M20, for the HDMI cable", "nylon or nickel-brass", "enclosure/button-pod", "Back wall of the pod"),
  ]),
- ("CHARGING: Delco 10SI 3-wire alternator (wiring-schematic.jpg, section 7)", [
+ ("CHARGING: Delco 10SI 3-wire alternator (docs/wiring-schematic.jpg, section 7)", [
   (1, "Rectifier diode", "1N4001, 1 A 50 V", "1N4001", "Sch. 7", "In the terminal 1 (excite) wire, band toward the alternator: stops the running alternator back-feeding the key circuit (engine run-on, dash never sees key-off)"),
   (1, "Resistor 47 Ω", "5 W wirewound", "—", "Sch. 7", "In series with the diode: ~0.25 A with the key on and the engine stopped, like the charge lamp it replaces. Use the alternator maker's value if they give one"),
   (1, "Fusible link or circuit breaker", "Rated for the alternator (e.g. 60 A)", "—", "Sch. 7", "On the BAT stud wire, near the battery end. 8 AWG wire (10 AWG for 45 A units)"),
@@ -125,7 +126,7 @@ HEAD = PatternFill("solid", fgColor="1F3864")
 money = '$#,##0.00;($#,##0.00);"-"'
 
 ws["A1"] = "Bobcat Digital Dash — Bill of Materials"; ws["A1"].font = Font(name=F, size=16, bold=True)
-ws["A2"] = "Matches wiring-schematic.jpg (\"Sch. n\" = schematic section) and README.md."; ws["A2"].font = Font(name=F, size=10, italic=True, color="595959")
+ws["A2"] = "Matches docs/wiring-schematic.jpg (\"Sch. n\" = schematic section) and README.md."; ws["A2"].font = Font(name=F, size=10, italic=True, color="595959")
 ws["A3"] = "How to use: enter prices in the yellow cells (e.g. 4.95); extended prices and totals update automatically. Mark Ordered with Y/N."
 ws["A3"].font = Font(name=F, size=10); ws["A3"].fill = INPUT
 ws.merge_cells("A3:K3")
@@ -185,5 +186,5 @@ ws.auto_filter.ref = f"A5:K{total_row-2}"
 ws.page_setup.orientation = "landscape"; ws.page_setup.fitToWidth = 1; ws.page_setup.fitToHeight = 0
 ws.sheet_properties.pageSetUpPr.fitToPage = True
 ws.print_title_rows = "5:5"
-wb.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "bobcat-dash-BOM.xlsx"))
+wb.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs", "bobcat-dash-BOM.xlsx"))
 print("items", item, "total row", total_row)

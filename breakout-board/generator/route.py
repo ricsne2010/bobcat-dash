@@ -11,7 +11,8 @@ MM = pcbnew.FromMM
 
 def shuffle_nets(path, seed):
     """Freerouting is deterministic: the same .dsn always routes the same way. Its result depends on the order
-    of the nets, though, so each new attempt gets the nets in a different (seeded, repeatable) order."""
+    of the nets, though, so each new attempt gets the nets in a different order: sorted by name first (KiCad's own
+    order changes between runs), then shuffled with the attempt number as the seed, so attempt N is repeatable."""
     lines = open(path).read().split("\n")
     start = next(i for i, l in enumerate(lines) if l.strip() == "(network")
     end = next(i for i in range(start, len(lines)) if lines[i].startswith("    (class "))
@@ -22,18 +23,20 @@ def shuffle_nets(path, seed):
             blocks.append(cur)
             cur = []
     assert not cur, "unexpected .dsn layout"
-    random.Random(seed).shuffle(blocks)
+    blocks.sort(key=lambda b: b[0])          # a fixed starting order: KiCad's varies run to run
+    if seed > 1:
+        random.Random(seed).shuffle(blocks)
     lines[start + 1:end] = [l for b in blocks for l in b]
     open(path, "w").write("\n".join(lines))
 
 
 best = None
 ATTEMPTS = int(os.environ.get("ROUTE_ATTEMPTS", "12"))
-for attempt in range(1, ATTEMPTS + 1):
+FIRST_SEED = int(os.environ.get("ROUTE_SEED", "1"))     # try other net orders: ROUTE_SEED=13 bash build.sh
+for attempt in range(FIRST_SEED, FIRST_SEED + ATTEMPTS):
     board = pcbnew.LoadBoard(PCB)
     assert pcbnew.ExportSpecctraDSN(board, "route.dsn"), "DSN export failed"
-    if attempt > 1:
-        shuffle_nets("route.dsn", attempt)
+    shuffle_nets("route.dsn", attempt)      # attempt 1: nets in name order; then seeded shuffles (repeatable)
     # Freerouting's own messages go to out/route.log: watch it with  tail -f out/route.log
     # (no window: with its GUI on, Freerouting 2.5 routes but never saves the result)
     with open(os.path.join(os.path.dirname(os.path.abspath(PCB)), "route.log"), "a") as log:
@@ -51,6 +54,28 @@ for attempt in range(1, ATTEMPTS + 1):
     if left == 0:
         break
 left, board = best
+
+# Finishing passes: a nearly routed board goes back to Freerouting with its tracks in place, so it only has to
+# find the last few connections (a fresh start would reshuffle everything).
+for extra in range(1, 4 if 0 < left <= 5 else 1):
+    pcbnew.SaveBoard("route_best.kicad_pcb", board)
+    assert pcbnew.ExportSpecctraDSN(board, "route.dsn"), "DSN export failed"
+    shuffle_nets("route.dsn", 1000 + extra)
+    with open(os.path.join(os.path.dirname(os.path.abspath(PCB)), "route.log"), "a") as log:
+        log.write(f"\n===== finishing pass {extra} ({left} left) =====\n"); log.flush()
+        subprocess.run([os.path.expanduser("~/.local/bin/freerouting"), "-de", "route.dsn", "-do", "route.ses",
+                        "--router.autorouter.max_passes=200", "--router.automatic_neckdown=false",
+                        "--gui.enabled=false"], stdout=log, stderr=subprocess.STDOUT, text=True, timeout=1800)
+    trial = pcbnew.LoadBoard("route_best.kicad_pcb")
+    if not pcbnew.ImportSpecctraSES(trial, "route.ses"):
+        break
+    trial.BuildConnectivity()
+    now_left = trial.GetConnectivity().GetUnconnectedCount(False)
+    print(f"finishing pass {extra}: {now_left} connection(s) left unrouted", flush=True)
+    if now_left < left:
+        left, board = now_left, trial
+    if left == 0:
+        break
 
 # ground fill on both copper layers
 gnd = board.FindNet("GND") or board.FindNet("/GND")

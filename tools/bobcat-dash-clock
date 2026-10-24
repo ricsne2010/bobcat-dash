@@ -1,0 +1,28 @@
+#!/bin/bash
+# Bobcat dash: set the clock from the service web page (run by the dash through sudo; see tools/bobcat-dash-sudoers).
+#   bobcat-dash-clock set EPOCH_SECONDS [TIME_ZONE]     e.g.  set 1792820834 America/Phoenix
+#   bobcat-dash-clock tz TIME_ZONE                     the time zone only (its daylight saving comes with it)
+# Sets the time zone (if given), the system clock, and the Pi 5's battery-backed RTC.
+set -eu
+if [ "${1:-}" = tz ]; then
+    [[ "${2:-}" =~ ^[A-Za-z0-9_+/-]{1,64}$ ]] && [ -f "/usr/share/zoneinfo/${2:-}" ] \
+        || { echo "unknown time zone: ${2:-}" >&2; exit 2; }
+    timedatectl set-timezone "$2"
+    echo "time zone $2: $(date)"
+    exit 0
+fi
+[ "${1:-}" = set ] || { echo "usage: $0 set EPOCH_SECONDS [TIME_ZONE] | tz TIME_ZONE" >&2; exit 2; }
+[[ "${2:-}" =~ ^[0-9]{10}$ ]] || { echo "bad time: ${2:-}" >&2; exit 2; }
+TZNAME="${3:-}"
+if [ -n "$TZNAME" ]; then
+    [[ "$TZNAME" =~ ^[A-Za-z0-9_+/-]{1,64}$ ]] && [ -f "/usr/share/zoneinfo/$TZNAME" ] \
+        || { echo "unknown time zone: $TZNAME" >&2; exit 2; }
+    timedatectl set-timezone "$TZNAME"
+fi
+date -u -s "@$2" >/dev/null
+if command -v hwclock >/dev/null && [ -e /dev/rtc0 ]; then
+    hwclock --systohc                # into the RTC: kept through key-off by the RTC battery
+    echo "set (and saved in the RTC): $(date)"
+else
+    echo "set (no RTC to save it in): $(date)"
+fi

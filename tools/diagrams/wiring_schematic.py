@@ -421,5 +421,5 @@ d.add(elm.Label().at((17, Y5 - 0.3)).label(
 
 d.save("schematic.png", dpi=170, transparent=False)
 img = Image.open("schematic.png").convert("RGB")
-img.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "wiring-schematic.jpg"), quality=92)
+img.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs", "wiring-schematic.jpg"), quality=92)
 print(img.size)

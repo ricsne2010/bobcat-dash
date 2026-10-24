@@ -39,7 +39,7 @@ CONFIG="$BOOT/config.txt"
 CMDLINE="$BOOT/cmdline.txt"
 [ -f "$REPO/dash.py" ] || { echo "Can't find dash.py next to tools/ ($REPO)"; exit 1; }
 [ -f "$CONFIG" ] && [ -f "$CMDLINE" ] || { echo "No $CONFIG / $CMDLINE: is this Raspberry Pi OS?"; exit 1; }
-echo "== Bobcat dash setup: user $USER_NAME, software in $REPO, screen $RES"
+echo "== M.O.S.S. (Bobcat dash) setup: user $USER_NAME, software in $REPO, screen $RES"
 
 step() { echo; echo "== $*"; }
 
@@ -64,6 +64,8 @@ step "Packages"
 apt-get update
 apt-get install -y python3-pygame python3-gpiozero python3-lgpio python3-smbus2 python3-pil \
     python3-qrcode i2c-tools git rpd-plym-splash
+
+apt-get install -y util-linux-extra 2>/dev/null || true    # hwclock: the web page saves the time in the Pi 5 RTC
 
 step "I2C (the ADC and the tilt sensor)"
 raspi-config nonint do_i2c 0
@@ -90,7 +92,8 @@ systemctl daemon-reload
 systemctl enable bobcat-dash
 
 step "Service Wi-Fi and USB stick helpers"
-install -m 755 "$REPO/tools/bobcat-dash-wifi" "$REPO/tools/bobcat-dash-usb" "$REPO/tools/bobcat-dash-reset-code" /usr/local/bin/
+install -m 755 "$REPO/tools/bobcat-dash-wifi" "$REPO/tools/bobcat-dash-usb" "$REPO/tools/bobcat-dash-reset-code" \
+    "$REPO/tools/bobcat-dash-clock" /usr/local/bin/
 sed "s/^pi ALL/$USER_NAME ALL/" "$REPO/tools/bobcat-dash-sudoers" > /tmp/bobcat-dash-sudoers
 if visudo -cf /tmp/bobcat-dash-sudoers >/dev/null; then
     install -m 440 /tmp/bobcat-dash-sudoers /etc/sudoers.d/bobcat-dash

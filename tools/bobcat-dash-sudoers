@@ -7,3 +7,4 @@ pi ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
 pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-wifi
 pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-usb
 pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-reset-code
+pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-clock

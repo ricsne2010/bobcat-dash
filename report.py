@@ -13,6 +13,7 @@ import os
 import time
 import zipfile
 
+import settings
 from service import clock_valid
 
 PERIODS = (("7", "7 days"), ("30", "30 days"), ("365", "12 months"), ("all", "All time"))
@@ -33,14 +34,22 @@ def hm(s):
     return f"{m // 60} h {m % 60:02d} min" if m >= 60 else f"{m} min"
 
 
+def lasted(s):
+    """How long an alarm lasted, to the second: '4 s', '2 min 05 s', '1 h 02 min 05 s'."""
+    s = int(round(s))
+    if s < 60:
+        return f"{s} s"
+    if s < 3600:
+        return f"{s // 60} min {s % 60:02d} s"
+    return f"{s // 3600} h {s % 3600 // 60:02d} min {s % 60:02d} s"
+
+
 def pct(a, b):
     return f"{100 * a / b:.0f} %" if b else "-"
 
 
 def temp(c, units):
-    if c is None:
-        return "-"
-    return f"{c * 9 / 5 + 32:.0f} °F" if units == "F" else f"{c:.0f} °C"
+    return "-" if c is None else settings.fmt(c, space=True, u=units)
 
 
 def day_of(t):
@@ -96,7 +105,80 @@ def buckets(days, period, today=None):
     return out
 
 
+def daily(days, period, today=None):
+    """[(date, record)] one per calendar day of the period (days without use: {}), oldest first."""
+    today = today or datetime.date.today()
+    if period in ("7", "30"):
+        first = today - datetime.timedelta(days=int(period) - 1)
+    else:
+        keys = [k for k in select(days, period, today) if k != "no-date"]
+        if not keys:
+            return []
+        first = datetime.date.fromisoformat(keys[0])
+    n = (today - first).days + 1
+    return [(first + datetime.timedelta(days=i), days.get((first + datetime.timedelta(days=i)).isoformat(), {}))
+            for i in range(n)]
+
+
+def temp_val(c, units):
+    return None if c is None else (c * 9 / 5 + 32 if units == "F" else c)
+
+
 # ---------------------------------------------------------------- charts (inline SVG)
+
+def svg_lines(dates, series, unit, aria, decimals=0):
+    """A line chart by day. series: [(name, css colour, [value or None per date])]. A day without a value
+    breaks the line (no slope down to zero)."""
+    W, H, L, R, T, B = 760, 250, 48, 12, 12, 30
+    vals = [v for _, _, vs in series for v in vs if v is not None]
+    if not vals or len(dates) < 2:
+        return '<p class="hint">Not enough days recorded for a chart yet.</p>'
+    lo, hi = min(vals), max(vals)
+    span = max(hi - lo, 1.0 if decimals else 10.0)
+    raw = span / 4
+    mag = 10 ** int(f"{raw:e}".split("e")[1])
+    step = next(m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw)
+    y0 = (lo // step) * step
+    y1 = y0 + step * (int((hi - y0) / step) + 1)
+    n = len(dates)
+    def X(i):
+        return L + (W - L - R) * i / (n - 1)
+    def Y(v):
+        return H - B - (H - B - T) * (v - y0) / (y1 - y0)
+    out = [f'<div class="chartwrap"><svg viewBox="0 0 {W} {H}" class="chart lines" role="img" aria-label="{esc(aria)}">']
+    v = y0
+    while v <= y1 + 1e-9:
+        out.append(f'<line x1="{L}" x2="{W - R}" y1="{Y(v):.1f}" y2="{Y(v):.1f}" class="grid"/>'
+                   f'<text x="{L - 6}" y="{Y(v) + 4:.1f}" class="ax" text-anchor="end">{v:.{decimals}f}{esc(unit)}</text>')
+        v += step
+    every = max(1, round(n / 8))
+    for i, d in enumerate(dates):
+        if i % every == 0 or i == n - 1 and (n - 1) % every > every / 2:
+            out.append(f'<text x="{X(i):.1f}" y="{H - 8}" class="ax" text-anchor="middle">{d.strftime("%b %d")}</text>')
+    dots = n <= 62
+    for name, col, vs in series:
+        path, gaps, pen, last = [], [], False, None
+        for i, v in enumerate(vs):
+            if v is None:
+                pen = False
+                continue
+            if not pen and last is not None:          # across days without use: a faint dashed line
+                gaps.append(f"M{X(last[0]):.1f},{Y(last[1]):.1f} L{X(i):.1f},{Y(v):.1f}")
+            path.append(f'{"L" if pen else "M"}{X(i):.1f},{Y(v):.1f}')
+            pen, last = True, (i, v)
+        if gaps:
+            out.append(f'<path d="{" ".join(gaps)}" fill="none" stroke="{col}" stroke-width="1.4" stroke-dasharray="3 4" opacity=".55"/>')
+        out.append(f'<path d="{" ".join(path)}" fill="none" stroke="{col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>')
+        for i, v in enumerate(vs):
+            if v is not None and (dots or i == 0 or vs[i - 1] is None):
+                out.append(f'<circle cx="{X(i):.1f}" cy="{Y(v):.1f}" r="{3 if dots else 2}" fill="{col}">'
+                           f'<title>{esc(name)} {dates[i].strftime("%b %d")}: {v:.{decimals}f}{esc(unit)}</title></circle>')
+    out.append("</svg></div>")
+    keys = "".join(f'<li><i style="background:{c}"></i>{esc(nm)}</li>' for nm, c, _ in series)
+    return "".join(out) + f'<ul class="keys">{keys}<li class="hint">dashed: across days without use</li></ul>'
+
+
+
 
 def svg_bars(rows, unit_h=True):
     """Stacked bars of engine time per bucket (idle / working / full / overspeed)."""
@@ -247,10 +329,39 @@ def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500
     out.append('<section class="panel"><h2>Time at each engine speed (rpm)</h2>' + svg_hist(t["hist"], bands, max_rpm)
                + f'<p class="hint">Idle below {bands["idle_below"]} rpm, part throttle up to {bands["full_at"]} rpm, full throttle from there, '
                f'overspeed above {bands["over_at"]} rpm (settings: [usage] and [tach] in config.toml).</p></section>')
-    extremes = [("Hottest E-box", temp(t.get("box_max"), units)), ("Hottest outside", temp(t.get("amb_max"), units)),
-                ("Coldest outside", temp(t.get("amb_min"), units)), ("Hottest Pi CPU", temp(t.get("pi_max"), "C")),
-                ("Battery while running", f'{t["v_run_min"]:.1f} - {t["v_run_max"]:.1f} V' if "v_run_min" in t else "-")]
-    out.append('<section class="panel"><h2>Extremes</h2><dl class="pairs">' +
+    def at(field, hi=True):
+        """The period's highest (or lowest) daily value, and when: (value, 'Oct 12 2026, 3:42 PM')."""
+        got = [(days[k][field], k, days[k].get(field + "_t")) for k in keys if days[k].get(field) is not None]
+        if not got:
+            return None, ""
+        v, k, ts = (max if hi else min)(got, key=lambda g: g[0])
+        if ts and clock_valid(ts):
+            lt = time.localtime(ts)
+            return v, time.strftime("%b ", lt) + f"{lt.tm_mday} {lt.tm_year}, " + settings.hhmm(lt)
+        return v, ("" if k == "no-date" else datetime.date.fromisoformat(k).strftime("%b %d %Y"))
+    def ext(label, field, hi=True, fmt=None):
+        v, when_ = at(field, hi)
+        shown = "-" if v is None else (fmt(v) if fmt else temp(v, units))
+        return label, shown + (f' <small>· {esc(when_)}</small>' if when_ else "")
+    extremes = [ext("Hottest E-box", "box_max"), ext("Hottest outside", "amb_max"), ext("Coldest outside", "amb_min", False),
+                ext("Hottest Pi CPU", "pi_max"), ext("Lowest battery while running", "v_run_min", False, lambda v: f"{v:.1f} V"),
+                ext("Highest battery while running", "v_run_max", True, lambda v: f"{v:.1f} V")]
+    by_day = daily(days, period, today)
+    dates = [d for d, _ in by_day]
+    deg = f"°{units}"
+    temps = [(name, col, [temp_val(r.get(k), units) for _, r in by_day]) for name, col, k in
+             (("E-box max", "var(--l-ebox)", "box_max"), ("Outside high", "var(--l-hot)", "amb_max"),
+              ("Outside low", "var(--l-cold)", "amb_min"), ("Pi CPU max", "var(--l-pi)", "pi_max"))]
+    temps = [x for x in temps if any(v is not None for v in x[2])]
+    batt = [(name, col, [r.get(k) for _, r in by_day]) for name, col, k in
+            (("Lowest while running", "var(--l-cold)", "v_run_min"), ("Highest while running", "var(--l-hot)", "v_run_max"))]
+    out.append('<section class="panel"><h2>Temperatures and battery</h2>'
+               '<h3>Temperatures by day</h3>' + (svg_lines(dates, temps, deg, "Temperatures by day") if temps else
+                                                 '<p class="hint">No temperatures recorded in this period.</p>') +
+               '<h3>Battery while running, by day</h3>' + (svg_lines(dates, batt, " V", "Battery voltage by day", 1)
+                                                         if any(v is not None for _, _, vs in batt for v in vs) else
+                                                         '<p class="hint">The engine didn\'t run in this period.</p>') +
+               '<h3>Extremes</h3><dl class="pairs">' +
                "".join(f"<dt>{a}</dt><dd>{b}</dd>" for a, b in extremes) + "</dl></section>")
     top = {}
     for e in evs:
@@ -290,14 +401,14 @@ def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500
 
 CSS = """
 :root{--bg:#f3f4f6;--panel:#fff;--ink:#14181f;--dim:#5b6472;--line:#dde1e7;--accent:#1f6feb;--hdr:#0b0e13;--hdr-ink:#eceff4;
---hdr-dim:#98a2b1;--on-color:#fff;--idle:#8b95a5;--part:#d99a00;--full:#2f9e5b;--over:#d93a3a;--good:#2f9e5b;--warn:#c27c00;
+--hdr-dim:#98a2b1;--on-color:#fff;--idle:#8b95a5;--part:#d99a00;--full:#2f9e5b;--l-ebox:#c27c00;--l-hot:#d93a3a;--l-cold:#1f6feb;--l-pi:#8250df;--over:#d93a3a;--good:#2f9e5b;--warn:#c27c00;
 --bad:#d93a3a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;
---line:#2a313c;--accent:#5b9dff;--hdr:#000;--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--over:#ef4444;--good:#34c46e;
+--line:#2a313c;--accent:#5b9dff;--hdr:#000;--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--l-ebox:#f5b21f;--l-hot:#ff6b6b;--l-cold:#5b9dff;--l-pi:#b392f0;--over:#ef4444;--good:#34c46e;
 --warn:#f5a623;--bad:#ef4444;color-scheme:dark}}
 :root[data-theme="dark"]{--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;--line:#2a313c;--accent:#5b9dff;--hdr:#000;
---idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--over:#ef4444;--good:#34c46e;--warn:#f5a623;--bad:#ef4444;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--l-ebox:#f5b21f;--l-hot:#ff6b6b;--l-cold:#5b9dff;--l-pi:#b392f0;--over:#ef4444;--good:#34c46e;--warn:#f5a623;--bad:#ef4444;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "B612",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{background:var(--hdr);color:var(--hdr-ink);padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));
 display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
 header b{font-size:18px;letter-spacing:.06em}header .ver{color:var(--hdr-dim);font-size:14px}
@@ -306,9 +417,9 @@ header nav a.on{background:var(--hdr-ink);color:var(--hdr)}
 main{max-width:1100px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 h1{font-size:24px;margin:8px 0 14px;text-wrap:balance}h2{font-size:15px;margin:0 0 12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
-.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}@media (min-width:700px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}@media (min-width:860px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:5px solid var(--line);min-width:0;min-height:118px;display:flex;flex-direction:column}
-.card .lbl{color:var(--dim);font-size:14px}.card .val{font-size:clamp(20px,6vw,26px);font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card .note{margin-top:auto}.card .note{color:var(--dim);font-size:13px}
+.card .lbl{color:var(--dim);font-size:14px}.card .val{font-size:clamp(17px,4.6vw,24px);line-height:1.15;font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums;overflow-wrap:normal;word-break:keep-all}.card .note{margin-top:auto}.card .note{color:var(--dim);font-size:13px}
 a.card.link{color:var(--ink);text-decoration:none}a.card.link:hover{border-color:var(--accent)}
 .pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;color:var(--dim);flex-wrap:wrap}.pager select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}html{overflow-anchor:none}
 .card.good{border-left-color:var(--good)}.card.warn{border-left-color:var(--warn)}.card.bad{border-left-color:var(--bad)}
@@ -317,16 +428,16 @@ a.card.link{color:var(--ink);text-decoration:none}a.card.link:hover{border-color
 .strip{display:flex;height:28px;border-radius:8px;overflow:hidden;background:var(--line)}
 .keys{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-wrap:wrap;gap:6px 22px}.keys i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px}
 .keys small{color:var(--dim)}
-.chart{width:100%;height:auto;display:block}.chart .grid{stroke:var(--line)}.chart .ax{fill:var(--dim);font-size:12px}
-td.part{color:var(--warn);font-weight:700}.hint{color:var(--dim);font-size:13px;margin:8px 0 0}.empty{color:var(--dim);font-size:18px;padding:30px 0}
+.chart{width:100%;height:auto;display:block}.chartwrap{overflow-x:auto}.chart.lines{min-width:600px}.chart .grid{stroke:var(--line)}.chart .ax{fill:var(--dim);font-size:12px}
+td.part{color:var(--warn);font-weight:700}h3{font-size:14px;color:var(--dim);font-weight:600;margin:14px 0 6px}h3:first-of-type{margin-top:0}.hint{color:var(--dim);font-size:13px;margin:8px 0 0}.empty{color:var(--dim);font-size:18px;padding:30px 0}
 table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 td small.hint{white-space:normal;display:block;max-width:46ch}
 th{color:var(--dim);font-weight:600}.scroll{overflow-x:auto}
-dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--dim)}dd{margin:0;font-weight:600}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media (min-width:700px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dd small{color:var(--dim);font-weight:400}@media (max-width:600px){dd small{display:block}}dt{color:var(--dim)}dd{margin:0;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media (min-width:860px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:5px solid var(--good);min-height:92px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
 .tile.warn{border-top-color:var(--warn)}.tile.alarm{border-top-color:var(--bad)}.tile.unknown,.tile.idle{border-top-color:var(--idle)}
-.tile .lbl{color:var(--dim);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tile .val{font-size:clamp(20px,6vw,28px);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.you{color:var(--dim);font-size:14px;margin:0 0 10px}
+.tile .lbl{color:var(--dim);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tile .val{font-size:clamp(17px,4.6vw,25px);line-height:1.15;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:normal;word-break:keep-all;margin:2px 0}.you{color:var(--dim);font-size:14px;margin:0 0 10px}a.tile.link{color:var(--ink);text-decoration:none}a.tile.link:hover{border-color:var(--accent)}tr:target td{background:var(--line)}tr:target td:first-child{box-shadow:inset 4px 0 var(--accent)}tr[id]{scroll-margin-top:16px}.tile .note{color:var(--dim);font-size:12px;line-height:1.3;min-height:1.3em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;color:var(--on-color)}
 .pill.alarm,.pill.due{background:var(--bad)}.pill.warn,.pill.soon{background:var(--warn)}.pill.ok{background:var(--good)}.pill.unknown{background:var(--idle)}
 .btn{display:inline-block;padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:var(--on-color);font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
@@ -339,14 +450,37 @@ footer{color:var(--dim);font-size:13px;text-align:center;padding:10px 16px 24px}
 """
 
 
-def page(title, body, nav=None, active="", version="", foot=""):
+FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+FONTS = (("B612-Regular.ttf", 400), ("B612-Bold.ttf", 700))
+
+
+def font_css(embed=False):
+    """@font-face for B612 (fonts/, SIL OFL): served by the dash at /fonts/..., or inside the file for a
+    stand-alone report (a USB stick copy opens the same on any computer)."""
+    import base64
+    out = []
+    for name, weight in FONTS:
+        path = os.path.join(FONT_DIR, name)
+        if not os.path.isfile(path):
+            continue
+        if embed:
+            with open(path, "rb") as f:
+                src = "data:font/ttf;base64," + base64.b64encode(f.read()).decode()
+        else:
+            src = "/fonts/" + name
+        out.append(f"@font-face{{font-family:'B612';src:url('{src}') format('truetype');font-weight:{weight};"
+                   f"font-style:normal;font-display:swap}}")
+    return "".join(out)
+
+
+def page(title, body, nav=None, active="", version="", foot="", embed_fonts=False):
     """A whole HTML page. nav: [(href, name)] for the top bar, or None for a stand-alone file."""
     links = ""
     if nav:
         links = "<nav>" + "".join(f'<a href="{h}" class="{"on" if h == active else ""}">{n}</a>' for h, n in nav) + "</nav>"
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
-            f'content="width=device-width,initial-scale=1"><title>{esc(title)} - S.S.O.M.S</title>'
-            f"<style>{CSS}</style></head><body><header><b>S.S.O.M.S</b><span class='ver'>Bobcat M700</span>"
+            f'content="width=device-width,initial-scale=1"><title>{esc(title)} - M.O.S.S.</title>'
+            f"<style>{font_css(embed_fonts)}{CSS}</style></head><body><header><b>M.O.S.S.</b><span class='ver'>Bobcat M700</span>"
             f'<span class="ver">{esc(version)}</span>{links}</header><main><h1>{esc(title)}</h1>{body}</main>'
             f"<footer>{foot}</footer></body></html>")
 
@@ -368,14 +502,16 @@ def when(t):
 def usage_csv(days):
     head = ["date", "engine_h", "idle_h", "part_throttle_h", "full_h", "overspeed_h", "key_on_h", "starts", "cranks",
             "crank_s", "stops", "hot_stops", "meter_start_h", "meter_end_h", "box_max_c", "outside_min_c",
-            "outside_max_c", "pi_max_c", "batt_run_min_v", "batt_run_max_v"]
+            "outside_max_c", "pi_max_c", "batt_run_min_v", "batt_run_max_v", "e_box_max_at", "outside_min_at",
+            "outside_max_at", "pi_max_at", "batt_run_min_at", "batt_run_max_at"]
     rows = []
     for k in sorted(days):
         r = days[k]
         rows.append([k] + [round(r.get(f, 0) / 3600, 3) for f in ("run_s", "idle_s", "work_s", "full_s", "over_s", "key_s")]
                     + [r.get(f, 0) for f in ("starts", "cranks")] + [round(r.get("crank_s", 0), 1)]
                     + [r.get(f, 0) for f in ("stops", "hot_stops")]
-                    + [r.get(f, "") for f in ("h0", "h1", "box_max", "amb_min", "amb_max", "pi_max", "v_run_min", "v_run_max")])
+                    + [r.get(f, "") for f in ("h0", "h1", "box_max", "amb_min", "amb_max", "pi_max", "v_run_min", "v_run_max")]
+                    + [when(r.get(f + "_t")) for f in ("box_max", "amb_min", "amb_max", "pi_max", "v_run_min", "v_run_max")])
     return _csv(head, rows)
 
 
@@ -403,13 +539,13 @@ def bundle(ctx):
     evs = list(events.events)
     hours = ctx["hours"]()
     status, done = service_csv(service, hours)
-    units = ctx["cfg"].get("temperature", {}).get("units", "F").upper()
+    units = settings.units()
     max_rpm = ctx["cfg"].get("tach", {}).get("max_rpm", 3500)
     stamp = time.strftime("%b %d %Y %H:%M") if clock_valid() else "date not set"
     body = (f'<p class="hint">Exported {stamp} at {hours:.1f} engine hours, software v{esc(ctx["version"])}.</p>'
             + report_body(days, usage.bands(), evs, "all", units, max_rpm=max_rpm, links=False))
     files = {
-        "report.html": page("Performance report", body, version=f'v{ctx["version"]}').encode(),
+        "report.html": page("Performance report", body, version=f'v{ctx["version"]}', embed_fonts=True).encode(),
         "usage-daily.csv": usage_csv(days).encode(),
         "alarms.csv": alarms_csv(evs).encode(),
         "service-status.csv": status.encode(),
@@ -428,7 +564,7 @@ def bundle(ctx):
     if log_text:
         files["dash-log.txt"] = log_text.encode()
     files["README.txt"] = (
-        "S.S.O.M.S (System Status, Operations, and Maintenance System) export, Bobcat M700\n\n"
+        "M.O.S.S. (Maintenance, Operations, and Service System) export, Bobcat M700\n\n"
         "report.html         open in any web browser: the performance report (all time)\n"
         "usage-daily.csv     one line per day: engine hours by throttle band, starts, temperatures (opens in Excel)\n"
         "alarms.csv          every alarm and warning recorded\n"

@@ -40,6 +40,7 @@ from usb import UsbStick
 from temps import TempSensors, TempStatus, list_cli as temps_cli
 from power import COUNTDOWN, ON, SHUTDOWN, PowerManager
 from screens import Screens
+import settings
 from service import Service
 from servicemode import ServiceMode
 from sensors import calibrate, light_inputs, make_sensors
@@ -227,7 +228,7 @@ class Splash:
         """(Re)load the picture. The simulator calls this at every simulated boot, so a new
         splash picture shows up without restarting it.
         With a caption (the default), the bottom of the screen is kept for two lines of text,
-        the system's name ([splash] caption: "System Status, Operations, and Maintenance System") and the version +
+        the system's name ([splash] caption: "Maintenance, Operations, and Service System") and the version +
         build date, and the picture fits above them. A caption too wide for the screen is set smaller to fit."""
         screen, cfg, base_dir = self.screen, self.cfg, self.base_dir
         sc = cfg.get("splash", {})
@@ -245,7 +246,7 @@ class Splash:
             return
         W, H = screen.get_size()
         k = min(W / DESIGN_W, H / DESIGN_H)
-        title = sc.get("caption", "System Status, Operations, and Maintenance System")
+        title = sc.get("caption", "Maintenance, Operations, and Service System")
         band = round(112 * k) if title else 0            # caption strip under the picture
         mode = sc.get("fit", "contain")
         scale = (max if mode == "cover" else min)(W / img.get_width(), (H - band) / img.get_height())
@@ -264,7 +265,7 @@ class Splash:
             bgc = self.surface.get_at((0, H - 1))
             light_bg = 0.299 * bgc[0] + 0.587 * bgc[1] + 0.114 * bgc[2] > 140
             fg, dim = ((20, 24, 30), (80, 88, 100)) if light_bg else (TEXT, DIM)
-            f1, f2 = pygame.font.Font(None, round(46 * k)), pygame.font.Font(None, round(30 * k))
+            f1, f2 = make_font(46 * k), make_font(30 * k)
             t1 = f1.render(title, True, fg)
             if t1.get_width() > W - round(40 * k):            # long name on a narrow screen: smaller, to fit
                 t1 = pygame.transform.smoothscale(t1, (W - round(40 * k),
@@ -328,7 +329,7 @@ def event_states(st, cfg):
 
 class Dash:
     def __init__(self, screen, cfg):
-        self.name = cfg["display"].get("name", "S.S.O.M.S")     # top-left of the header
+        self.name = cfg["display"].get("name", "M.O.S.S.")     # top-left of the header
         self.screen = screen
         self.cfg = cfg
         w, h = screen.get_size()
@@ -354,10 +355,7 @@ class Dash:
         return max(1, round(n * self.k))
 
     def font(self, size):
-        size = max(8, round(size * self.k))
-        if size not in self._fonts:
-            self._fonts[size] = pygame.font.Font(None, size)
-        return self._fonts[size]
+        return make_font(size * self.k)
 
     def text(self, s, size, color, max_w=None, **anchor):
         surf = self.font(size).render(s, True, color)
@@ -527,7 +525,9 @@ class Dash:
         self.text("SIMULATOR KEYS", 40, AMBER, midtop=(box.centerx, box.y + self.px(20)))
         y = box.y + self.px(72)
         row = (box.h - self.px(90)) / len(self.help)
-        size = 30 if len(self.help) <= 21 else 26
+        size = 30
+        while size > 14 and self.font(size).get_linesize() > row:          # each line fits its row
+            size -= 2
         for key, desc in self.help:
             self.text(key, size, TEXT, midleft=(box.x + self.px(36), y + row / 2))
             self.text(desc, size, DIM, midleft=(box.x + self.px(220), y + row / 2))
@@ -583,6 +583,8 @@ class Dash:
                         ("CRANKING", AMBER) if st.get("cranking") else
                         ("ENGINE OFF", DIM) if st["off"] else ("ENGINE ?", AMBER))
         room = int(free_right - left_edge - self.px(28))
+        if self.font(38).size(words)[0] > room and words.startswith("ENGINE "):
+            words = words[len("ENGINE "):]                                # short form before shrinking
         half = min(self.font(38).size(words)[0], room) / 2               # it shrinks to fit the room
         cx = min(rect.centerx, free_right - self.px(14) - half)
         cx = max(cx, left_edge + self.px(14) + half)              # never under the logo / simulator text
@@ -950,6 +952,27 @@ def save_boot_splash(cfg, here, out):
     return 0
 
 
+# B612 (fonts/, SIL Open Font License): the typeface designed for Airbus cockpit displays, with digits and look-alike
+# letters (0/O, 1/l, 3/8) easy to tell apart at a glance. Set at 0.64 of the old size, so text keeps its old width;
+# pygame's own font stands in if the file is missing.
+FONT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "B612-Bold.ttf")
+FONT_SCALE = 0.64
+_font_cache = {}
+
+
+def make_font(size):
+    """The dash's font at a design size (the sizes used to be pygame-default sizes; they still are)."""
+    size = max(8, round(size))
+    f = _font_cache.get(size)
+    if f is None:
+        if os.path.isfile(FONT_FILE):
+            f = pygame.font.Font(FONT_FILE, max(6, round(size * FONT_SCALE)))
+        else:
+            f = pygame.font.Font(None, size)
+        _font_cache[size] = f
+    return f
+
+
 def journal():
     """The dash's own log (systemd journal) for the downloads; "" when there's none (the simulator)."""
     try:
@@ -960,23 +983,83 @@ def journal():
         return ""
 
 
-def live_status(st, readings, cfg, hours, service, pi_temp, fan, wifi, power_state):
-    """What the service web page's Status shows (web.py /api/status)."""
-    def tile(name, value, state="ok"):
-        return [name, value, state]
+PROBE_NAMES = {"CAB": "Cabin Temp", "OUT": "Outside Temp", "AMB": "Outside Temp"}
+
+
+def engine_status(st, hours, service, events):
+    """The web page's ENGINE STATUS: (value, state, note, link), the most serious first. The link opens the
+    Alarms page, or the Service page at the item (/service#engine_oil). Engine alarms count until
+    they're cleared from the HISTORY list; service items count when marked engine = true in [service]."""
+    open_ev = [e for e in events.newest_first() if e.get("src") in ("oil_pressure", "rpm")]
+    rows = [(it, state, left) for it, state, left, _ in service.status(hours) if it.get("engine")]
+    short = service.short_h if hasattr(service, "short_h") else 10
+    checks = [r for r in rows if r[1] == "due" and service.interval(r[0]) <= short]     # the 10-hour daily checks
+    due = [r for r in rows if r[1] == "due" and service.interval(r[0]) > short]
+    soon = sorted((r for r in rows if r[1] == "soon"), key=lambda r: r[2])
+    oil = [e for e in open_ev if e["src"] == "oil_pressure" and e["level"] == "alarm"]
+    rpm = [e for e in open_ev if e["src"] == "rpm" and e["level"] in ("alarm", "warn")]
+    if oil:
+        return "CHECK ENGINE", "alarm", f"oil pressure {oil[0].get('detail', '')} at {oil[0]['h']:.1f} h: see Alarms", "/alarms"
+    if due:
+        it, _, left = due[0]
+        more = f" (+{len(due) - 1} more)" if len(due) > 1 else ""
+        return "MX REQUIRED", "alarm", f"{it['name'].capitalize()}: overdue {-left:.1f} h{more}", f"/service#{it['id']}"
+    if rpm:
+        return "CHECK ENGINE", "warn", f"engine speed: {rpm[0].get('detail', '')} at {rpm[0]['h']:.1f} h: see Alarms", "/alarms"
+    if checks:
+        it, _, left = checks[0]
+        return "CHECKS DUE", "warn", f"{it['name'].capitalize()} overdue {-left:.1f} h: {service.task(it)}", f"/service#{it['id']}"
+    if soon:
+        it, _, left = soon[0]
+        return "MX SOON", "warn", f"{it['name'].capitalize()} in {left:.1f} h", f"/service#{it['id']}"
+    if st["rpm"][0] == "unknown":
+        return "NO TACH SIGNAL", "unknown", "no engine-speed signal: check the coil wire", "/alarms"
+    nxt = min(rows, key=lambda r: r[2]) if rows else None
+    if not nxt:
+        return "GOOD", "ok", "", "/service"
+    return "GOOD", "ok", f"next: {nxt[0]['name'].capitalize()} in {nxt[2]:.0f} h", f"/service#{nxt[0]['id']}"
+
+
+def set_clock(epoch, tz="", sim=False):
+    """Set the clock and/or time zone (web page Sync / Set by hand / Time zone, or SYSTEM > CLOCK on the dash):
+    (ok, message). epoch None = the time zone only. Through tools/bobcat-dash-clock (sudoers)."""
+    if sim:
+        what = (f"its clock to {time.strftime('%b %d %Y %H:%M:%S', time.localtime(epoch))}" if epoch is not None else "")
+        what += (" and " if what and tz else "") + (f"its time zone to {tz}" if tz else "")
+        return True, f"Simulator: the dash would set {what}. This computer is left alone."
+    cmd = ["tz", tz] if epoch is None else ["set", str(int(epoch))] + ([tz] if tz else [])
+    try:
+        r = subprocess.run(["sudo", "-n", "/usr/local/bin/bobcat-dash-clock"] + cmd, capture_output=True, text=True,
+                           timeout=20)
+    except (OSError, subprocess.SubprocessError) as e:
+        return False, f"Couldn't set the clock: {e}"
+    if r.returncode:
+        return False, "Couldn't set the clock: " + ((r.stderr or r.stdout).strip() or f"exit {r.returncode}")
+    time.tzset()                        # this process picks up a new time zone straight away
+    log.info("clock: %s", r.stdout.strip())
+    return True, "Dash clock " + r.stdout.strip() + ". " + settings.zone_text()
+
+
+def live_status(st, readings, cfg, hours, service, pi_temp, fan, wifi, power_state, events=None):
+    """What the service web page's Status shows (web.py /api/status). Tiles: [label, value, state, note]."""
+    def tile(name, value, state="ok", note="", href=""):
+        return [name, value, state, note, href]
     v, f = readings.get("volts"), readings.get("fuel_pct")
-    tiles = [tile("Engine", f"{readings.get('rpm') or 0:.0f} rpm" if st["running"] else "off", st["rpm"][0]),
-             tile("Battery", f"{v:.1f} V" if v is not None else "--", st["volts"][0]),
-             tile("Fuel", f"{f:.0f} %" if f is not None else "--", st["fuel"][0]),
-             tile("Engine hours", f"{hours:.1f}")]
+    eng = engine_status(st, hours, service, events) if events is not None else ("--", "unknown", "", "")
+    tiles = [tile("Engine Status", *eng),
+             tile("Battery", f"{v:.1f} V" if v is not None else "--", st["volts"][0],
+                  "charging" if st["running"] else "engine off"),
+             tile("Fuel Level", f"{f:.0f} %" if f is not None else "--", st["fuel"][0]),
+             tile("Engine Hours", f"{hours:.1f}", "ok", "running now" if st["running"] else "")]
     temps = st.get("temps")
     if temps:
-        tiles.append(tile("E-box temp", temps["box"][1].replace("E-BOX HOT ", "").replace("E-BOX ", ""), temps["box"][0]))
+        tiles.append(tile("E-Box Temp", temps["box"][1].replace("E-BOX HOT ", "").replace("E-BOX ", ""), temps["box"][0],
+                          "electronics box"))
         for a in temps.get("ambient", []):
             name, _, val = a.partition(" ")
-            tiles.append(tile(name.title(), val))
+            tiles.append(tile(PROBE_NAMES.get(name.upper(), name.title() + " Temp"), val))
     if st.get("tilt"):
-        tiles.append(tile("Machine angle", st["tilt"]["text"], st["tilt"]["state"]))
+        tiles.append(tile("Machine Angle", st["tilt"]["text"], st["tilt"]["state"]))
     ev_states, labels = event_states(st, cfg)
     word = {"warn": "WARNING", "alarm": "ALARM", "unknown": "NO SIGNAL"}
     active = [[labels.get(k, k.upper()), s, d or "", word[s]] for k, (s, d) in ev_states.items() if s in word]
@@ -997,7 +1080,7 @@ def main():
     ap.add_argument("--sim", action="store_true", help="simulated sensors (no hardware needed)")
     ap.add_argument("--windowed", action="store_true", help="run in a 1024x768 window")
     ap.add_argument("--calibrate", action="store_true", help="print raw sensor readings and exit")
-    ap.add_argument("--version", action="version", version=f"S.S.O.M.S {VERSION} (built {BUILD_DATE})")
+    ap.add_argument("--version", action="version", version=f"M.O.S.S. {VERSION} (built {BUILD_DATE})")
     ap.add_argument("--boot-splash", nargs="?", const=os.path.join(here, "splash", "boot-splash.png"), metavar="PNG",
                     help="save the splash screen (picture + caption) at the display size, for the Pi's boot splash")
     ap.add_argument("--temps", action="store_true", help="list the temperature sensors (IDs, readings, roles)")
@@ -1023,7 +1106,7 @@ def main():
         raise SystemExit(zero_cli(cfg, force=args.force))
     if args.temps:
         raise SystemExit(temps_cli(cfg))
-    log.info("S.S.O.M.S (System Status, Operations, and Maintenance System) %s (built %s)", VERSION, BUILD_DATE)
+    log.info("M.O.S.S. (Maintenance, Operations, and Service System) %s (built %s)", VERSION, BUILD_DATE)
     if args.boot_splash:
         raise SystemExit(save_boot_splash(cfg, here, args.boot_splash))
 
@@ -1035,7 +1118,7 @@ def main():
     else:
         screen = pygame.display.set_mode((d["width"], d["height"]), pygame.FULLSCREEN)
         pygame.mouse.set_visible(False)
-    pygame.display.set_caption(cfg["display"].get("name", "S.S.O.M.S"))
+    pygame.display.set_caption(cfg["display"].get("name", "M.O.S.S."))
 
     sensors = make_sensors(cfg, sim=args.sim)
     sensors.start()
@@ -1057,6 +1140,7 @@ def main():
     power = PowerManager(cfg, sim=args.sim, start_off=args.sim)
     buttons = Buttons(cfg, sim=args.sim)
     screens = Screens(cfg)
+    settings.init(cfg, hourmeter.dir)      # units chosen on the SYSTEM screen / web page (settings.json)
     events = EventLog(cfg, hourmeter.dir)
     service = Service(cfg, hourmeter.dir)
     service.baseline(hourmeter.hours)
@@ -1077,6 +1161,7 @@ def main():
                   "data_dir": hourmeter.dir, "repo": here, "hours": lambda: hourmeter.hours, "live": lambda: live[0],
                   "touch": svcmode.touch, "wifi_text": lambda: "Service Wi-Fi " + svcmode.describe(time.monotonic()),
                   "wifi_off": lambda: svcmode.turn_off("from the web page"), "wifi_extend": svcmode.extend,
+                  "set_clock": lambda epoch, tz: set_clock(epoch, tz, args.sim),
                   "restart": request_restart,
                   "journal": journal if not args.sim else (lambda: ""), "code": code}
     svcmode.web_ctx = export_ctx
@@ -1246,12 +1331,14 @@ def main():
             ctx = {"service": service, "events": events, "hours": hourmeter.hours, "st": st, "readings": readings,
                    "now": now, "data_dir": hourmeter.dir, "pi_temp": health.describe(), "version": VERSION,
                    "build": BUILD_DATE, "fan": fan.describe(), "svcmode": svcmode, "usb": usb, "code": code,
+                   "set_clock": lambda epoch, tz="": set_clock(epoch, tz, args.sim),
                    "save_errors": events.save_error or service.save_error or usage.save_error or ""}
             if now - last_live >= 1.0:
                 last_live = now
                 live[0] = live_status(st, readings, cfg, hourmeter.hours, service, health.describe(), fan.describe(),
                                       "Service Wi-Fi " + svcmode.describe(now),
-                                      {ON: "key on", COUNTDOWN: "key off, shutting down"}.get(power_state, "off"))
+                                      {ON: "key on", COUNTDOWN: "key off, shutting down"}.get(power_state, "off"),
+                                      events=events)
             # an alarm nobody has silenced yet locks the menus (gauges only) until SILENCE is pressed
             locked = (power_state == ON and not lamp_test and not alerts.muted
                       and ALARM in flat_states(st).values())

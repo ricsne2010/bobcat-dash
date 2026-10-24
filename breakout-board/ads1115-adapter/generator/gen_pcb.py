@@ -165,6 +165,27 @@ add_logo(LOGO, LOGO_CENTRE, LOGO_WIDTH, layer=pcbnew.F_SilkS, mirror=False)   # 
 add_logo(LOGO, LOGO_CENTRE, LOGO_WIDTH)                                       # and underneath
 pcbnew.SaveBoard(OUT, board)
 
+# blue solder mask, white silkscreen, lead-free HASL: the same stack-up as the main board (see its gen_pcb.py)
+SOLDER_MASK = "Blue"
+_stack = "".join([
+    "\t\t(stackup\n",
+    '\t\t\t(layer "F.SilkS" (type "Top Silk Screen") (color "White"))\n',
+    '\t\t\t(layer "F.Paste" (type "Top Solder Paste"))\n',
+    f'\t\t\t(layer "F.Mask" (type "Top Solder Mask") (color "{SOLDER_MASK}") (thickness 0.01))\n',
+    '\t\t\t(layer "F.Cu" (type "copper") (thickness 0.035))\n',
+    '\t\t\t(layer "dielectric 1" (type "core") (thickness 1.51) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))\n',
+    '\t\t\t(layer "B.Cu" (type "copper") (thickness 0.035))\n',
+    f'\t\t\t(layer "B.Mask" (type "Bottom Solder Mask") (color "{SOLDER_MASK}") (thickness 0.01))\n',
+    '\t\t\t(layer "B.Paste" (type "Bottom Solder Paste"))\n',
+    '\t\t\t(layer "B.SilkS" (type "Bottom Silk Screen") (color "White"))\n',
+    '\t\t\t(copper_finish "HAL lead-free")\n',
+    "\t\t\t(dielectric_constraints no)\n",
+    "\t\t)\n"])
+_text = open(OUT).read()
+if "(stackup" not in _text:
+    _i = _text.index("\t(setup\n") + len("\t(setup\n")
+    open(OUT, "w").write(_text[:_i] + _stack + _text[_i:])
+
 # every footprint comes fresh from KiCad's library, so "doesn't match the library" only flags the trimmed holes
 pro = os.path.splitext(OUT)[0] + ".kicad_pro"
 cfg = json.load(open(pro)) if os.path.exists(pro) else {"meta": {"filename": os.path.basename(pro), "version": 3}}

@@ -21,12 +21,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import report
+import settings
 import updater
 from service import DUE, SOON, clock_valid
 
 log = logging.getLogger("web")
 esc = html.escape
-NAV = [("/", "Status"), ("/reports", "Reports"), ("/alarms", "Alarms"), ("/service", "Service"),
+NAV = [("/", "Status"), ("/reports", "Reports"), ("/alarms", "Alarms"), ("/service", "Service"), ("/settings", "Settings"),
        ("/downloads", "Downloads"), ("/software", "Software")]
 UPLOAD = "update-upload.zip"
 MAX_UPLOAD = 60 * 1024 * 1024
@@ -45,7 +46,8 @@ STATUS_JS = """
 const E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function post(u){const r=await fetch(u,{method:'POST',headers:{'X-Bobcat':'1'}});document.getElementById('done').textContent=await r.text();tick();}
 async function tick(){try{const s=await (await fetch('/api/status')).json();
-document.getElementById('tiles').innerHTML=s.tiles.map(t=>`<div class="tile ${t[2]}"><div class="lbl">${E(t[0])}</div><div class="val">${E(t[1])}</div></div>`).join('');
+document.getElementById('tiles').innerHTML=s.tiles.map(t=>{const tag=t[4]?`a href="${E(t[4])}"`:'div';
+return `<${tag} class="tile ${t[2]}${t[4]?' link':''}"><div class="lbl">${E(t[0])}${t[4]?' &rsaquo;':''}</div><div class="val">${E(t[1])}</div><div class="note">${E(t[3]||'')}</div></${tag.split(' ')[0]}>`}).join('');
 document.getElementById('active').innerHTML=s.active.length?s.active.map(a=>`<a><span>${E(a[0])} <small>${E(a[2])}</small></span><span class="pill ${a[1]}">${E(a[3])}</span></a>`).join(''):'<p class="hint">None. All clear.</p>';
 document.getElementById('due').innerHTML=s.due.length?s.due.map(a=>`<a href="/service"><span>${E(a[0])}</span><span class="pill ${a[1]}">${E(a[2])}</span></a>`).join(''):'<p class="hint">Nothing due.</p>';
 document.getElementById('pi').innerHTML=s.pi.map(p=>`<dt>${E(p[0])}</dt><dd>${E(p[1])}</dd>`).join('');
@@ -66,6 +68,38 @@ if(!/^[0-9]+$/.test(c.value)){m.className='msg bad';m.textContent='Enter the mai
 if(!confirm(ask))return;m.className='msg';m.textContent='Working ...';
 const r=await fetch(u,{method:'POST',headers:{'X-Bobcat':'1','X-Code':c.value}});const t=await r.text();c.value='';
 m.className='msg '+(r.ok?'good':'bad');m.textContent=t;if(r.ok)setTimeout(()=>location.reload(),15000);}
+</script>"""
+
+
+SETTINGS_JS = """<script>
+let off=0;const P=n=>String(n).padStart(2,'0');
+const H12=()=>document.querySelector('dl[data-h12]').dataset.h12==='1';
+const fmt=d=>d.toLocaleString([], {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:H12()});
+async function sync(){const t0=Date.now();const j=await (await fetch('/api/time')).json();off=j.epoch*1000-(t0+Date.now())/2;
+document.getElementById('dash').dataset.tz=j.tz;document.getElementById('dash').dataset.valid=j.valid;}
+function tick(){const now=Date.now(),dash=new Date(now+off),d=document.getElementById('dash');
+d.textContent=fmt(dash)+'  ('+(d.dataset.tz||'')+')'+(d.dataset.valid==='false'?' - NOT SET':'');
+document.getElementById('dev').textContent=fmt(new Date(now))+'  ('+Intl.DateTimeFormat().resolvedOptions().timeZone+')';
+const s=Math.round(Math.abs(off)/1000);document.getElementById('diff').textContent=s<2?'in step':
+(off<0?'dash is behind by ':'dash is ahead by ')+(s>=86400?Math.floor(s/86400)+' d ':'')+P(Math.floor(s%86400/3600))+':'+P(Math.floor(s%3600/60))+':'+P(s%60);}
+async function clockfmt(f){const r=await fetch('/settings/clockfmt',{method:'POST',headers:{'X-Bobcat':'1','X-Clock':f}});
+document.getElementById('mc').textContent=await r.text();setTimeout(()=>location.reload(),600);}
+async function units(u){const r=await fetch('/settings/units',{method:'POST',headers:{'X-Bobcat':'1','X-Units':u}});
+document.getElementById('mu').textContent=await r.text();setTimeout(()=>location.reload(),600);}
+async function setclock(manual){const m=document.getElementById('mc'),c=document.getElementById('code3'),hand=document.getElementById('manual');
+if(!/^[0-9]+$/.test(c.value)){m.className='msg bad';m.textContent='Enter the maintenance code first.';c.focus();return;}
+if(manual&&!hand.value){m.className='msg bad';m.textContent='Pick the date and time first.';hand.focus();return;}
+m.className='msg';m.textContent='Setting ...';
+const h={'X-Bobcat':'1','X-Code':c.value};if(manual){h['X-Local']=hand.value;}else{h['X-Epoch']=String(Date.now()/1000);
+h['X-TZ']=Intl.DateTimeFormat().resolvedOptions().timeZone;}
+const r=await fetch('/settings/clock',{method:'POST',headers:h});c.value='';
+m.className='msg '+(r.ok?'good':'bad');m.textContent=await r.text();if(r.ok){await sync();}}
+async function setzone(){const m=document.getElementById('mc'),c=document.getElementById('code3'),z=document.getElementById('zone');
+if(!/^[0-9]+$/.test(c.value)){m.className='msg bad';m.textContent='Enter the maintenance code first.';c.focus();return;}
+const zone=z.value=='device'?Intl.DateTimeFormat().resolvedOptions().timeZone:z.value;m.className='msg';m.textContent='Setting ...';
+const r=await fetch('/settings/clock',{method:'POST',headers:{'X-Bobcat':'1','X-Code':c.value,'X-Zone':zone}});c.value='';
+m.className='msg '+(r.ok?'good':'bad');m.textContent=await r.text();if(r.ok){setTimeout(()=>location.reload(),1500);}}
+sync();setInterval(tick,500);setInterval(sync,30000);
 </script>"""
 
 
@@ -113,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _page(self, title, body, active):
         c = self.ctx
-        foot = (f'S.S.O.M.S v{esc(c["version"])} - {c["hours"]():.1f} engine hours - '
+        foot = (f'M.O.S.S. v{esc(c["version"])} - {c["hours"]():.1f} engine hours - '
                 + esc(c["wifi_text"]()))
         self._send(report.page(title, body, NAV, active, f'v{c["version"]}', foot))
 
@@ -128,10 +162,13 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         q = parse_qs(url.query)
         route = {"/": self.status, "/api/status": self.api_status, "/reports": self.reports, "/alarms": self.alarms,
-                 "/service": self.service, "/downloads": self.downloads, "/software": self.software}.get(url.path)
+                 "/service": self.service, "/downloads": self.downloads, "/software": self.software,
+                 "/settings": self.settings_page, "/api/time": self.api_time}.get(url.path)
         try:
             if route:
                 route(q)
+            elif url.path.startswith("/fonts/"):
+                self.font_file(url.path[len("/fonts/"):])
             elif url.path.startswith("/download/"):
                 self.download(url.path[len("/download/"):])
             else:
@@ -151,6 +188,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.upload()
             elif path in ("/software/install", "/software/restore", "/restart"):
                 self.software_action(path)
+            elif path == "/settings/units":
+                settings.set_units(self.headers.get("X-Units", ""))
+                self._send(f"Temperatures now in °{settings.units()} on the dash and here.", "text/plain; charset=utf-8")
+            elif path == "/settings/clockfmt":
+                settings.set_clock_fmt(self.headers.get("X-Clock", ""))
+                self._send(f"Clock now {settings.clock_fmt()[:2]}-hour on the dash and here.", "text/plain; charset=utf-8")
+            elif path == "/settings/clock":
+                self.set_clock()
             elif path == "/wifi-extend":
                 self.ctx["wifi_extend"]()
                 self._send("Extended. " + self.ctx["wifi_text"](), "text/plain; charset=utf-8")
@@ -180,7 +225,7 @@ class Handler(BaseHTTPRequestHandler):
             period = "30"
         usage = c["usage"]
         body = report.report_body(dict(usage.days), usage.bands(), list(c["events"].events), period,
-                                  c["cfg"].get("temperature", {}).get("units", "F").upper(),
+                                  settings.units(),
                                   max_rpm=c["cfg"].get("tach", {}).get("max_rpm", 3500))
         if not clock_valid():
             body = '<p class="msg bad">The Pi\'s clock isn\'t set, so new days are filed under "no-date".</p>' + body
@@ -197,7 +242,7 @@ class Handler(BaseHTTPRequestHandler):
             rows = "".join(
                 f'<tr><td>{esc(report.when(e.get("t")) or "date not set")}</td><td>{e.get("h", 0):.1f} h</td>'
                 f'<td>{esc(e["what"])}</td><td><span class="pill {e["level"]}">{_state_word(e["level"])}</span></td>'
-                f'<td>{esc(e.get("detail") or "")}</td><td>{esc(report.hm(e["dur_s"]) if e.get("dur_s") else "still on")}</td>'
+                f'<td>{esc(e.get("detail") or "")}</td><td>{"-" if e.get("src") == "note" else "still on" if e.get("dur_s") is None else report.lasted(e["dur_s"])}</td>'
                 f'<td>{"cleared" if e.get("cleared") else ""}</td></tr>' for e in evs)
             body = (tabs + '<section class="panel"><div class="scroll"><table><tr><th>When</th><th>Meter</th>'
                     '<th>What</th><th>Level</th><th>Detail</th><th>Lasted</th><th></th></tr>' + rows +
@@ -216,7 +261,7 @@ class Handler(BaseHTTPRequestHandler):
                 left_txt += f", {days:.0f} days" if days > 0 else ", overdue by date"
             last = (f'{s["done_h"]:.1f} h' + (f' ({esc(report.when(s.get("done_t"))[:10])})' if s.get("done_t") else "")
                     + (" install" if s.get("baseline") else "")) if s else "-"
-            rows.append(f'<tr><td><b>{esc(it["name"])}</b><br><small class="hint">{esc(svc.task(it))}</small></td>'
+            rows.append(f'<tr id="{esc(it["id"])}"><td><b>{esc(it["name"])}</b><br><small class="hint">{esc(svc.task(it))}</small></td>'
                         f'<td>{svc.interval(it):g} h</td><td>{last}</td><td>{left_txt}</td>'
                         f'<td><span class="pill {cls}">{word}</span></td></tr>')
         hist = svc.completed()
@@ -246,6 +291,19 @@ class Handler(BaseHTTPRequestHandler):
             for f, t, d in items) + "</section>")
         self._page("Downloads", body, "/downloads")
 
+    def font_file(self, name):
+        if name not in dict(report.FONTS):                          # only the bundled fonts, by exact name
+            self._send("Not found", "text/plain", 404)
+            return
+        with open(os.path.join(report.FONT_DIR, name), "rb") as f:
+            data = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", "font/ttf")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
+
     def download(self, name):
         c = self.ctx
         stamp = report.export_name(c["hours"]())
@@ -260,6 +318,80 @@ class Handler(BaseHTTPRequestHandler):
                                                                                           "text/plain; charset=utf-8")
         base, ext = os.path.splitext(name)
         self._send(files[name], ctype, name=f"bobcat-{base}-{stamp}{ext}")
+
+    def api_time(self, q):
+        self._send(json.dumps({"epoch": time.time(), "tz": time.strftime("%Z"), "valid": clock_valid()}),
+                   "application/json")
+
+    def settings_page(self, q):
+        u = settings.units()
+        btn = lambda x: (f'<button class="btn{"" if x == u else " gray"}" onclick="units(\'{x}\')">°{x}'
+                         f'{" (now)" if x == u else ""}</button> ')
+        body = ('<section class="panel"><h2>Temperature units</h2><p>' + btn("F") + btn("C") + '</p>'
+                '<p class="hint">Changes every temperature on the dash and on these pages. Saved readings are kept in °C, '
+                'so switching back and forth loses nothing.</p><div id="mu"></div></section>'
+                '<section class="panel"><h2>Clock</h2><p>'
+                + "".join(f'<button class="btn{"" if f == settings.clock_fmt() else " gray"}" onclick="clockfmt(\'{f}\')">'
+                          f'{f[:2]}-hour{" (now)" if f == settings.clock_fmt() else ""}</button> ' for f in ("12h", "24h"))
+                + '</p><dl class="pairs" data-h12="' + ("0" if settings.clock_fmt() == "24h" else "1") + '">'
+                '<dt>Dash</dt><dd id="dash">-</dd><dt>This device</dt><dd id="dev">-</dd><dt>Difference</dt><dd id="diff">-</dd>'
+                f'<dt>Time zone</dt><dd>{esc(settings.zone_text())}</dd></dl>'
+                + CODE_FIELD.format(id="code3") +
+                '<button class="btn" onclick="setclock()">Sync to this device</button> '
+                '<p style="margin-top:14px"><label>Or set by hand (the dash\'s local time) '
+                '<input type="datetime-local" id="manual" style="font:inherit;padding:8px;border-radius:8px;'
+                'border:1px solid var(--line);background:var(--panel);color:var(--ink);margin-left:6px"></label> '
+                '<button class="btn gray" onclick="setclock(true)">Set by hand</button></p>'
+                '<p><label>Time zone <select id="zone" style="font:inherit;padding:8px;border-radius:8px;border:1px solid '
+                'var(--line);background:var(--panel);color:var(--ink);margin-left:6px">'
+                + '<option value="device">This device\'s zone</option>' + "".join(
+                    f'<option value="{esc(z)}"{" selected" if z == settings.zone_name() else ""}>{esc(lab)} ({esc(z)})'
+                    f'{": daylight saving" if settings.zone_dst(z) else ": no daylight saving"}</option>'
+                    for z, lab in settings.TIME_ZONES) +
+                '</select></label> <button class="btn gray" onclick="setzone()">Set time zone</button></p><div id="mc"></div>'
+                '<p class="hint"><b>Daylight saving</b> comes with the time zone: pick the place (Arizona never changes; Mountain, '
+                'Central and so on move an hour in March and November by themselves). '
+                '<b>Sync</b> copies this phone\'s or laptop\'s time and time zone to the dash, however far off the '
+                'dash is. <b>Set by hand</b> is for when this device\'s clock can\'t be trusted. Both save the time in the '
+                'Pi 5\'s battery-backed clock (if its RTC battery is fitted) and need the maintenance code: every record is '
+                'dated by this clock. The dash can also be set from its own buttons: SYSTEM &gt; CLOCK.</p></section>' + SETTINGS_JS)
+        self._page("Settings", body, "/settings")
+
+    def set_clock(self):
+        c = self.ctx
+        if not self._code_ok():
+            return
+        zone = (self.headers.get("X-Zone") or "").strip()            # the time zone only
+        if zone:
+            if not all(ch.isalnum() or ch in "_+-/" for ch in zone) or len(zone) > 64:
+                self._send("That isn't a time zone name.", "text/plain", 400)
+                return
+            ok_, msg = c["set_clock"](None, zone)
+            if ok_:
+                c["events"].note("CLOCK", "warn", f"time zone set to {zone} on the web page "
+                                 f"({device_of(self.headers.get('User-Agent'))})", c["hours"]())
+            self._send(msg, "text/plain; charset=utf-8", 200 if ok_ else 500)
+            return
+        local = (self.headers.get("X-Local") or "").strip()          # set by hand: "2026-10-23T15:42"
+        try:
+            if local:
+                t = time.strptime(local[:16], "%Y-%m-%dT%H:%M")
+                epoch = int(time.mktime(t[:8] + (-1,)))                # the dash's own time zone
+            else:
+                epoch = int(float(self.headers.get("X-Epoch", "")))     # sync: this device's clock
+        except ValueError:
+            self._send("No usable time came from this page.", "text/plain", 400)
+            return
+        if not 1735689600 <= epoch <= 4102444800:          # 2025 .. 2100
+            self._send("That date is outside 2025-2100: " + ("check it." if local else "this device's clock looks wrong too."),
+                       "text/plain", 400)
+            return
+        tz = "" if local else (self.headers.get("X-TZ") or "").strip()
+        ok_, msg = c["set_clock"](epoch, tz)
+        who = device_of(self.headers.get("User-Agent"))
+        if ok_:
+            c["events"].note("CLOCK", "warn", f"{'set by hand' if local else 'synced'} on the web page ({who})", c["hours"]())
+        self._send(msg, "text/plain; charset=utf-8", 200 if ok_ else 500)
 
     def software(self, q):
         c = self.ctx

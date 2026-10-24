@@ -153,5 +153,5 @@ d.add(elm.Label().at((nx, ny - 0.8)).label(notes, fontsize=10, halign="left", va
 
 d.save("lights_wiring.png", dpi=150, transparent=False)
 img = Image.open("lights_wiring.png").convert("RGB")
-img.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "lights-wiring.jpg"), quality=92)
+img.save(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "docs", "lights-wiring.jpg"), quality=92)
 print(img.size)
