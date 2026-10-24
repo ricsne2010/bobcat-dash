@@ -43,7 +43,8 @@ PI = {1: "+3V3", 2: "+5V", 3: "SDA", 4: "+5V", 5: "SCL", 6: "GND", 7: "W1_DQ", 9
       18: "TEMP_LED", 20: "GND", 22: "LT_FRONT_GPIO", 25: "GND", 29: "BTN_GPIO", 30: "GND", 31: "KEY_GPIO",
       32: "LT_REAR_GPIO", 33: "LT_WORK_GPIO", 34: "GND", 35: "I2S_LRC",
       19: "BTN_BACK_GPIO", 23: "FAN_GPIO", 24: "BTN_L_GPIO", 26: "BTN_R_GPIO", 38: "BTN_OK_GPIO",   # rev 2.9
-      36: "KILL_GPIO", 37: "HOLD_GPIO", 39: "GND", 40: "I2S_DIN"}
+      36: "KILL_GPIO", 37: "HOLD_GPIO", 39: "GND", 40: "I2S_DIN",
+      21: "BRAKE_GPIO"}                                                                         # rev 3.0
 part("J1", "Connector_Generic:Conn_02x20_Odd_Even", "TO PI (40-pin ribbon)",
      "Connector_IDC:IDC-Header_2x20_P2.54mm_Vertical",
      {n: PI.get(n) for n in range(1, 41)}, "pi", "Box header, straight 40-pin IDC ribbon to the Pi GPIO header")
@@ -259,6 +260,18 @@ part("J13", "Connector_Generic:Conn_01x04", "TILT", "Connector_Molex:Molex_Micro
 R("R83", "100", "SDA", "TILT_SDA", "tilt", "SDA series protection")
 R("R84", "100", "SCL", "TILT_SCL", "tilt", "SCL series protection")
 R("R85", "47", "+3V3", "TILT_3V3", "tilt", "Sensor supply: limits a shorted cable to ~70 mA")
+
+# ---------------------------------------------------------------- AUX: CHT board (rev 3.0)
+# One latching 2x3 Micro-Fit to the CHT board in the electronics box: its MCP9601 thermocouple amplifiers on the
+# I2C bus (through the TILT plug's 100R / 47R protection: same bus, and the cable stays inside the box) and the
+# parking brake input, whose optocoupler sits on the CHT board. The brake LEDs are fed from +12V through 2.2k, so
+# a shorted cable draws ~5 mA; 1k in the GPIO line limits what a fault can push into the Pi.
+part("J18", "Connector_Generic:Conn_02x03_Odd_Even", "AUX (CHT + BRAKE)",
+     "Connector_Molex:Molex_Micro-Fit_3.0_43045-0612_2x03_P3.00mm_Vertical",
+     {1: "GND", 2: "TILT_3V3", 3: "TILT_SDA", 4: "TILT_SCL", 5: "BRAKE_IO", 6: "BRAKE_12V"}, "aux",
+     "Molex Micro-Fit 3.0 43045-0612 2x3 (latching): CHT board. 1 GND, 2 3V3, 3 SDA, 4 SCL, 5 BRAKE, 6 BRAKE 12V. Housing 43025-0600")
+R("R96", "1k", "BRAKE_GPIO", "BRAKE_IO", "aux", "Parking brake signal: series protection (GPIO 9)")
+R("R97", "2.2k", "+12V", "BRAKE_12V", "aux", "Parking brake input LEDs on the CHT board, ~4 mA; a shorted cable draws ~5 mA")
 
 # ---------------------------------------------------------------- temperature (rev 2.7)
 # 1-Wire bus on GPIO 4 (Pi pin 7, the Pi's standard 1-Wire pin: dtoverlay=w1-gpio). DS18B20s, +-0.5 C, -55..125 C.

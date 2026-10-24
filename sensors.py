@@ -203,6 +203,7 @@ class HardwareSensors:
             "warnings": {name: None for name in cfg["warnings"]},
             "key": None,
             "lights": {},
+            "brake": None,
         }
 
         try:
@@ -227,6 +228,12 @@ class HardwareSensors:
             for name, sc in light_inputs(cfg).items():
                 deb = lc.get("debounce", 0.2)
                 self.lights[name] = (DigitalInputDevice(sc["gpio"], pull_up=True), Debounce(deb, deb))
+
+        # parking brake switch, through the board's optocoupler (rev 3.0): pin pulled low = brake set
+        bc = cfg.get("park_brake", {})
+        self.brake = None
+        if bc.get("enabled") and bc.get("gpio") is not None:
+            self.brake = (DigitalInputDevice(bc["gpio"], pull_up=True), Debounce(0.3, 0.3))
 
         from gpiozero import LED
 
@@ -313,8 +320,10 @@ class HardwareSensors:
 
             with self.lock:
                 lights = {name: deb.update(dev.is_active, now) for name, (dev, deb) in self.lights.items()}
+                brake = None if self.brake is None else self.brake[1].update(self.brake[0].is_active, now)
                 self._snapshot = {"volts": volts, "fuel_pct": fuel, "rpm": rpm, "warnings": warnings,
-                                  "key": None if self.key is None else self.key.is_active, "lights": lights}
+                                  "key": None if self.key is None else self.key.is_active, "lights": lights,
+                                  "brake": brake}
             self._stop.wait(0.05)
 
 
@@ -346,6 +355,8 @@ class SimSensors:
         (", / .  / 0", "pitch nose down / nose up 3 deg; 0 = level ground"),
         ("-", "unplug / replug the tilt sensor (NO SIGNAL)"),
         ("=", "box temp: normal / warm / hot / sensor missing"),
+        ("`", "CHT: normal / cyl 3 warm / cyl 3 hot / cyl 2 misfiring / cyl 4 unplugged"),
+        ("/", "parking brake set / released"),
         ("P / X", "hour meter +10 h / hours + cool-down 60x faster"),
         ("I / U", "Pi too hot / 5 V supply low (each on / off)"),
         ("J", "light display: big tiles / small icons"),
@@ -381,6 +392,8 @@ class SimSensors:
         self.box_steps = [38.0, 54.0, 68.0, None]   # = : breakout box temp: normal / warm / hot / sensor missing
         self.box_i = 0
         self.tilt_back_in = 0.0         # after replugging, the real reader re-averages for a second
+        self.brake = True               # / : parking brake set (parked) / released
+        self.cht = [25.0] * 4           # cylinder head temperatures, deg C: warm up while running
         self.no_start = False        # W: it won't catch (no fuel / no spark): cranks until you let go
         self.ran = False             # it ran (and charged) since the last start attempt
         self.volts = 12.6            # battery model: dips while cranking, charges once running
@@ -397,7 +410,10 @@ class SimSensors:
         self.t = time.monotonic()
         self.reset()                 # test overrides only; engine state above is left alone
 
+    CHT_MODES = ["normal", "cyl 3 warm", "cyl 3 hot", "cyl 2 misfiring", "cyl 4 unplugged"]
+
     def reset(self):
+        self.cht_mode = 0
         self.fuel = 68.0
         self.forced = set()
         self.unplugged = set()       # warning switches with a broken wire (reads None)
@@ -442,6 +458,12 @@ class SimSensors:
             return
         if key == "=":
             self.box_i = (self.box_i + 1) % len(self.box_steps)
+            return
+        if key == "`":
+            self.cht_mode = (self.cht_mode + 1) % len(self.CHT_MODES)
+            return
+        if key == "/":
+            self.brake = not self.brake
             return
         if key == "-":
             self.tilt_unplugged = not self.tilt_unplugged
@@ -545,6 +567,8 @@ class SimSensors:
             parts.append("idle: SAGGING")
         if self.tilt_unplugged:
             parts.append("tilt: unplugged")
+        if self.cht_mode:
+            parts.append("CHT: " + self.CHT_MODES[self.cht_mode])
         gone = [n.replace("hyd_", "").replace("_pressure", "").replace("_", " ") for n in self.names if n in self.unplugged]
         if gone:
             parts.append("unplugged: " + ", ".join(gone))
@@ -603,9 +627,29 @@ class SimSensors:
             "key": self.key_on,
             "lights": self.light_states(),
             "tilt": self._tilt_reading(dt, shake),
+            "cht": self._cht_reading(dt, engine_turning),
+            "brake": self.brake,            # still read after key-off (the board stays powered to shut down)
             "temps": {"box": self.box_steps[self.box_i],
                       "probes": [("CAB", 33.5 + 0.5 * math.sin(now / 40)), ("OUT", 41.0 + math.sin(now / 60))]},
         }
+
+    def _cht_reading(self, dt, turning):
+        """Heads warm toward ~300-400 °F with throttle while running (about a minute), cool off when stopped."""
+        base = (150.0 + 55.0 * self.throttle) if turning else 25.0
+        offsets = [0.0, -3.0, 4.0, 1.0]
+        mode = self.CHT_MODES[self.cht_mode]
+        if turning and mode == "cyl 3 warm":
+            offsets[2] = 268.0 - base                     # ~515 °F: warning
+        elif turning and mode == "cyl 3 hot":
+            offsets[2] = 296.0 - base                     # ~565 °F: alarm
+        elif mode == "cyl 2 misfiring" and turning:
+            offsets[1] = -75.0                            # ~135 °F cooler than the rest: spread
+        tau = 20.0 if turning else 60.0
+        out = []
+        for i in range(4):
+            self.cht[i] += (base + offsets[i] - self.cht[i]) * min(1.0, dt / tau)
+            out.append((str(i + 1), None if mode == "cyl 4 unplugged" and i == 3 else self.cht[i]))
+        return out
 
     def _tilt_reading(self, dt, shake):
         if self.tilt_unplugged:

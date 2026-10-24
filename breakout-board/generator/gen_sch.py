@@ -641,13 +641,40 @@ def blk_tilt(ox, oy):
     pwr("GND", (p1[0] - 2.54, p1[1]), side="left")
     for (pp, ref, top, dx) in [(p2, "R85", "+3V3", 15.24), (p3, "R83", "SDA", 25.4), (p4, "R84", "SCL", 35.56)]:
         x = pp[0] - dx
-        W(pp, (x, pp[1]))
+        mid = (pp[0] - 5.08, pp[1])
+        W(pp, mid, (x, pp[1]))
+        gl({"R85": "TILT_3V3", "R83": "TILT_SDA", "R84": "TILT_SCL"}[ref], mid, 270)   # shared with J18 (rev 3.0)
         place(ref, x, pp[1] - 3.81)
         if top == "+3V3":
             pwr("+3V3", pin(ref, 1))
         else:
             gl(top, pin(ref, 1), 90)
     text("1 GND   2 3V3   3 SDA   4 SCL  (cable soldered to the sensor board)", ox + 2.54, oy + 46.0, 1.27)
+
+
+def blk_aux(ox, oy):
+    box(ox, oy, ox + 92, oy + 50, "AUX: CHT BOARD (rev 3.0)",
+        "To the CHT board: its MCP9601 thermocouple amplifiers share the TILT plug's protected I2C, and the parking "
+        "brake optocoupler sits there.")
+    jx, jy = ox + 50.8, oy + 27.94
+    place("J18", jx, jy, ref_at=(1.27, -6.35, None), val_at=(1.27, 8.89, None))
+    g = pin("J18", 1)
+    W(g, (g[0] - 2.54, g[1]))
+    pwr("GND", (g[0] - 2.54, g[1]), side="left")
+    for n, net, ang in ((3, "TILT_SDA", 180), (2, "TILT_3V3", 0), (4, "TILT_SCL", 0)):
+        a = pin("J18", n)
+        b = (a[0] - 2.54, a[1]) if ang == 180 else (a[0] + 2.54, a[1])
+        W(a, b)
+        gl(net, b, ang)
+    a5 = pin("J18", 5)
+    W(a5, (a5[0] - 7.62, a5[1]))
+    place("R96", a5[0] - 11.43, a5[1], 90, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
+    gl("BRAKE_GPIO", pin("R96", 1), 180)
+    a6 = pin("J18", 6)
+    W(a6, (a6[0] + 7.62, a6[1]))
+    place("R97", a6[0] + 11.43, a6[1], 270, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
+    pwr("+12V", pin("R97", 1), side="right")
+    text("J18: 1 GND  2 3V3  3 SDA  4 SCL  5 BRAKE (GPIO 9)  6 BRAKE 12V", ox + 2.54, oy + 46.0, 1.27)
 
 
 def blk_temp(ox, oy):
@@ -785,6 +812,7 @@ blk_pi(434.34, 12.7)
 blk_modules(434.34, 90.17)
 blk_horn(434.34, 200.66)
 blk_flags(434.34, 264.16)
+blk_aux(434.34, 299.72)
 
 # the two PWR_FLAGs from design.py (#FLG01 TMR_VDD, #FLG02 GND) are drawn by blk_hold / blk_flags under new refs
 NOTES = ("Fuel mode:  A = sender only: JP1 1-2, fit JP2.   B = gauge + dash: JP1 2-3, JP2 off.\n"
@@ -933,8 +961,8 @@ for a, b in segs:
 
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
-       [Sym("title_block"), [Sym("title"), "M.O.S.S. Breakout Board - Bobcat M700"], [Sym("date"), "2026-10-22"],
-        [Sym("rev"), "2.9"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
+       [Sym("title_block"), [Sym("title"), "M.O.S.S. Breakout Board - Bobcat M700"], [Sym("date"), "2026-10-24"],
+        [Sym("rev"), "3.0"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \
       [[Sym("sheet_instances"), [Sym("path"), "/", [Sym("page"), "1"]]], [Sym("embedded_fonts"), Sym("no")]]

@@ -15,6 +15,7 @@ Per day (the local date; "no-date" while the clock isn't set) it adds up:
   h0, h1     engine hour meter at the first and last moment seen that day
   box_min, box_max, amb_min, amb_max, pi_min, pi_max, v_run_min, v_run_max   (temperatures in C, battery volts)
   p_<NAME>_min, p_<NAME>_max   each probe on its own (p_OUT_max, p_CAB_min); amb_* = all probes together
+  cht_<CYL>_min, cht_<CYL>_max  each cylinder's head temperature while the engine runs (cht_3_max)
              each with <name>_t: when it happened (wall clock, only while the clock is set)
 
 Kept in the data folder as usage.json, written safely every save_every_s, at key-off and at exit.
@@ -67,7 +68,7 @@ class UsageLog:
         return r
 
     def update(self, now, key_on, running, cranking, rpm, volts=None, temps=None, pi_temp=None, hours=None,
-               cool_pending=False, speed=1.0, wall=None):
+               cool_pending=False, speed=1.0, wall=None, cht=None):
         """Call every frame. temps: the temperature snapshot {"box": C, "probes": [(name, C)]} or None.
         cool_pending: the cool-down reminder is still counting (COOL DOWN / IDLE TO COOL DOWN).
         speed: the simulator's time x60 (so a simulated hour shows as an hour)."""
@@ -109,6 +110,10 @@ class UsageLog:
             if volts is not None:
                 self._extreme(r, "v_run_min", volts, min, wall, 2)
                 self._extreme(r, "v_run_max", volts, max, wall, 2)
+            for name, t in cht or []:              # cylinder head temperatures, while running
+                if t is not None:
+                    self._extreme(r, f"cht_{name}_max", t, max, wall)
+                    self._extreme(r, f"cht_{name}_min", t, min, wall)
         if temps:
             if temps.get("box") is not None:
                 self._extreme(r, "box_max", temps["box"], max, wall)

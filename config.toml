@@ -45,7 +45,7 @@ pulse_off = 0.5
 test_on_startup = true    # short chirp during the lamp test, so you know the horn works
 # Red alarms that sound the horn. Anything else that goes red (e.g. low fuel)
 # only plays the alert tone on the speaker.
-sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts", "tilt"]
+sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts", "tilt", "cht"]
 
 [silence_button]          # momentary push button to ground
 gpio = 5
@@ -141,6 +141,27 @@ ambient = "each"          # "each" = every probe by name, "average" = one AMB re
 box_warn = 50.0           # C (122 F): amber E-BOX HOT, one beep
 box_alarm = 65.0          # C (149 F): red E-BOX HOT, alarm tone (no horn)
 read_every = 5.0          # seconds between readings
+
+[cht]                     # cylinder head temperatures: Type K thermocouples under the spark plugs (CHT board, rev 3.0)
+# One MCP9601 module per cylinder, in the CHT board's sockets 1-4 (addresses 0x60, 0x65, 0x66, 0x67, set by the
+# socket). List only the cylinders fitted, e.g. one sensor on cylinder 4 (socket 4):
+#   cylinders = [ { name = "4", address = 0x67 } ]
+# all four: [ { name = "1", address = 0x60 }, { name = "2", address = 0x65 },
+#             { name = "3", address = 0x66 }, { name = "4", address = 0x67 } ]
+cylinders = []            # none fitted yet: CHT is off (the simulator shows four)
+warn_f = 500              # any cylinder this hot: amber CHT HIGH
+alarm_f = 550             # this hot: red, horn. The factory head switches stop the engine over 570 °F (Bobcat
+                          # service manual 7A-3). M.O.S.S. never stops the engine itself.
+spread_f = 100            # running and warmed up: one cylinder this much cooler than the others' average = CHT SPREAD
+spread_after_s = 300      # (warmed up = running at least this long, and the hottest at least spread_min_f)
+spread_min_f = 250
+read_every = 1.0
+
+[park_brake]              # parking brake switch on the handle, closed = set (breakout board rev 3.0 PARK BRAKE)
+enabled = false           # true once the switch is fitted (the simulator always shows it)
+gpio = 9                  # Pi pin 21, through the board's optocoupler: low = brake set
+drive_s = 5.0             # set while the engine works above idle this long: PARKING BRAKE ON
+# drive_rpm = 1400        # "above idle" (default: idle_rpm + 400)
 
 [pi_health]               # the Pi's own warnings, shown in the header (amber, one beep)
 enabled = true

@@ -258,6 +258,38 @@ BOBCAT   E-BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING          
 - `units = "F"` (or `"C"`) sets what's shown; the E-BOX limits in `config.toml` are in °C.
 - Simulator: **=** steps the box through normal, warm, hot and sensor missing; CAB and OUT are simulated.
 
+## Cylinder head temperatures (CHT)
+
+A Type K thermocouple under each spark plug, read by an MCP9601 thermocouple amplifier on the **CHT board**
+(rev 3.0), which plugs into the breakout board's **CHT (I2C)** connector. Fit one to four: list the ones fitted in
+`[cht] cylinders` (the module in CHT-board socket 1-4 answers at 0x60, 0x65, 0x66, 0x67). Until then CHT is off.
+
+- **Sensor:** The Sensor Connection **CHT-FS-072-06-18-K-MP** (flexible stem, rated to 1000 °C, *ungrounded*
+  junction, 18 mm ring for the VH4D's plugs, male mini K plug). 120 in lead and custom lengths are available.
+- **Extension:** only **Type K extension wire** and Type K (yellow) mini connectors between the sensor and the
+  board: ordinary copper adds an error that changes with the temperature at the joint. US colours: yellow = +,
+  **red = -**. Keep the plastic connectors away from the hot head.
+- **On the dash:** a **CYL HEAD TEMP** tile beside the warning lights: the hottest cylinder big, every
+  cylinder small underneath. On the web Status page: a tile with each cylinder; Reports: each cylinder's
+  daily high and low while running (Extremes).
+- **Limits** (°F, `[cht]`): **500 °F** amber CHT HIGH, **550 °F** red with the horn. The factory head
+  switches on early Bobcat 700 engines stop the engine over **570 °F** (service manual 7A-3); M.O.S.S. warns
+  before that and **never stops the engine itself**. **CHT SPREAD** (amber): with the engine running 5 min
+  and warm, one cylinder 100 °F cooler than the average of the others (a fouled plug, misfire or plug wire).
+  A broken or unplugged thermocouple shows that cylinder as `--` (NO SIGNAL).
+- Simulator: **`** steps through normal / cyl 3 warm / cyl 3 hot / cyl 2 misfiring / cyl 4 unplugged.
+
+## Parking brake
+
+A sealed switch on the parking brake handle, closed when the brake is set, to the breakout board's
+**PARK BRAKE** plug (rev 3.0, GPIO 9). Turn it on with `[park_brake] enabled = true` once it's fitted.
+
+- **(P) BRAKE** (red) in the header while the brake is set.
+- **PARKING BRAKE ON** (amber, flashing (P)): the brake is set while the engine works above idle for 5 s.
+- **SET PARKING BRAKE** on the key-off countdown (with a beep) if it isn't set. A broken wire reads as
+  "released", so this reminder also proves the switch works: set the brake and it goes away.
+- Simulator: **/** sets / releases it.
+
 ## Pi health warnings
 
 The dash also watches the Pi itself, and shows two amber warnings in the header (one beep each, and they
@@ -957,6 +989,8 @@ python3 dash.py --sim --windowed
 | , / . / 0 | pitch 3° nose down / nose up; 0 = back to level |
 | - | unplug / replug the tilt sensor: NO SIGNAL, then a second's re-averaging when it's back |
 | = | electronics box (E-BOX) temperature: normal / warm (E-BOX HOT, amber) / hot (red) / sensor missing |
+| ` | cylinder head temperatures: normal / cyl 3 warm (amber) / cyl 3 hot (red, horn) / cyl 2 misfiring (CHT SPREAD) / cyl 4 unplugged |
+| / | parking brake set / released |
 | J | light display: big tiles / small icons |
 | 7 | front light switch on / off |
 | 8 / 9 | the 3-position back switch: rear lights / work light (pressing the other one switches over, pressing the same one again = middle, off) |
@@ -986,6 +1020,8 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `starter.py`: starter rest reminder and cooling countdown
 - `tilt.py`: machine angle: sensor reader, gyro/accelerometer blending, limits, `--zero-tilt`
 - `temps.py`: box and probe temperatures (DS18B20, 1-Wire), E-BOX HOT limits, `--temps`
+- `cht.py`: cylinder head temperatures (MCP9601 thermocouple amplifiers, I2C), limits and the spread check
+- `brake.py`: parking brake tell-tale and reminders
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
 - `tools/bobcat-dash-keywatch` (+ `.service`): backstop that powers off 30 s after key-off if the dash isn't running
 - `tools/setup-pi.sh`: one-command setup of a fresh Raspberry Pi OS Lite card

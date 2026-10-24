@@ -28,3 +28,7 @@ tools/diagrams/*.png
 # manufacturer 3D models (download them yourself: see breakout-board/README.md, 3D models)
 breakout-board/kicad/3d/
 breakout-board/generator/route_best.kicad_pcb
+breakout-board/cht-board/generator/out/
+breakout-board/cht-board/generator/route.dsn
+breakout-board/cht-board/generator/route.ses
+breakout-board/cht-board/kicad/*-backups/

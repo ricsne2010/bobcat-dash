@@ -90,6 +90,17 @@ SECTIONS = [
   (1, "Exhaust fan", "40 x 40 x 10 mm, 12 V", "any (two-wire)", "enclosure/button-pod", "Back wall of the pod; switched by the board (Q5)"),
   (1, "Cable gland", "M20, for the HDMI cable", "nylon or nickel-brass", "enclosure/button-pod", "Back wall of the pod"),
  ]),
+ ("CYLINDER HEAD TEMPS + PARKING BRAKE (breakout board rev 3.0 AUX, breakout-board/cht-board): README, CHT / Parking brake", [
+  (1, "CHT + Parking Brake board", "87 x 46 mm, blue, 2 layers", "PCBWay, breakout-board/cht-board/fab/cht-board-gerbers.zip", "cht-board README", "Parts on the board: cht-board/fab/cht-board-bom.csv (sockets, PC817, LED, 1N4148, 22k, 43k, Micro-Fit, Phoenix)"),
+  (1, "CHT thermocouple", "Type K, ungrounded, 18 mm ring, flexible stem, male mini K plug", "The Sensor Connection CHT-FS-072-06-18-K-MP (or -120- / custom 144 in)", "README: CHT", "One per cylinder (start with one). Under the spark plug, ring for 18 mm plugs (Champion D-16J)"),
+  (1, "Thermocouple amplifier module", "MCP9601, I2C, Type K, cold-junction compensated", "Adafruit 5165", "cht-board README", "One per thermocouple, in the CHT board's socket for that cylinder; leave its address jumpers open"),
+  (1, "Type K extension wire", "KX, 20-24 AWG, FEP or fibreglass, stainless braid near the exhaust", "Omega EXTT-K-24 or similar", "README: CHT", "Length to reach the e-box. Never plain copper wire"),
+  (1, "Mini Type K connector pair", "Female jack + male plug, Type K alloy contacts (yellow)", "Omega SMPW-K-F + SMPW-K-M or similar", "README: CHT", "Extension ends; or a panel-mount mini K jack on the e-box wall"),
+  (4, "M2.5 standoff + screws", "11 mm, brass", "—", "cht-board README", "Two per MCP9601 module"),
+  (1, "Micro-Fit 3.0 dual-row housings (pair)", "2 x 3, latching", "Molex 43025-0600 (x2)", "cht-board README", "AUX cable: breakout board J18 to CHT board J1, pin 1 to pin 1"),
+  (12, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "cht-board README", "AUX cable, both ends"),
+  (1, "Parking brake switch", "Sealed (IP67) roller-lever microswitch, closes when the brake is set, factory pigtail", "e.g. Honeywell V15W series or similar", "README: Parking brake", "Mount on the handle; Deutsch DT 2-pin at the handle; to the CHT board's PARK BRAKE plug"),
+ ]),
  ("CHARGING: Delco 10SI 3-wire alternator (docs/wiring-schematic.jpg, section 7)", [
   (1, "Rectifier diode", "1N4001, 1 A 50 V", "1N4001", "Sch. 7", "In the terminal 1 (excite) wire, band toward the alternator: stops the running alternator back-feeding the key circuit (engine run-on, dash never sees key-off)"),
   (1, "Resistor 47 Ω", "5 W wirewound", "—", "Sch. 7", "In series with the diode: ~0.25 A with the key on and the engine stopped, like the charge lamp it replaces. Use the alternator maker's value if they give one"),

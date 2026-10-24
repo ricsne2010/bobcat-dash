@@ -38,6 +38,8 @@ from tilt import TiltSensor, TiltStatus, zero_cli
 from usage import UsageLog
 from usb import UsbStick
 from temps import TempSensors, TempStatus, list_cli as temps_cli
+from cht import CHTSensors, CHTStatus
+from brake import BrakeStatus
 from power import COUNTDOWN, ON, SHUTDOWN, PowerManager
 from screens import Screens
 import settings
@@ -302,11 +304,17 @@ def flat_states(st):
         out["tilt"] = st["tilt"]["state"]
     if st.get("temps"):
         out["box_temp"] = st["temps"]["box"][0]
+    if st.get("cht"):
+        out["cht"] = st["cht"]["state"]
+        out["cht_spread"] = st["cht"]["spread"][0]
+    if st.get("brake"):
+        out["park_brake"] = st["brake"]["state"]
     return out
 
 
 EVENT_LABELS = {"volts": "BATTERY", "rpm": "ENGINE RPM", "fuel": "FUEL", "pi_temp": "PI TEMP",
-                "pi_5v": "PI SUPPLY", "tilt": "MACHINE ANGLE", "box_temp": "E-BOX TEMP"}
+                "pi_5v": "PI SUPPLY", "tilt": "MACHINE ANGLE", "box_temp": "E-BOX TEMP", "cht": "CYLINDER HEAD TEMP",
+                "cht_spread": "CHT SPREAD", "park_brake": "PARKING BRAKE"}
 
 
 def event_states(st, cfg):
@@ -322,6 +330,11 @@ def event_states(st, cfg):
         out["tilt"] = (st["tilt"]["state"], st["tilt"]["text"])
     if st.get("temps"):
         out["box_temp"] = st["temps"]["box"]
+    if st.get("cht"):
+        out["cht"] = (st["cht"]["state"], st["cht"]["detail"])
+        out["cht_spread"] = st["cht"]["spread"]
+    if st.get("brake"):
+        out["park_brake"] = (st["brake"]["state"], st["brake"]["text"])
     return out, labels
 
 
@@ -428,19 +441,23 @@ class Dash:
             self.draw_lights(r.get("lights") or {}, lamp_test)
 
         names = list(self.cfg["warnings"])
+        cht = st.get("cht")
         gap = 16
-        tile_w = (1000 - gap * (len(names) - 1)) / len(names)
+        n = len(names) + (1 if cht else 0)
+        tile_w = (1000 - gap * (n - 1)) / n
         th = (wh - 10) * 0.5 if tiles else wh
         for i, name in enumerate(names):
             rect = self.R(12 + i * (tile_w + gap), wy, tile_w, th)
             self.draw_warning(rect, self.cfg["warnings"][name]["label"], *st["warnings"][name], flash, design_h=th)
+        if cht:
+            self.draw_cht(self.R(12 + len(names) * (tile_w + gap), wy, tile_w, th), cht, flash, lamp_test, th)
         if tiles:
             self.draw_light_tiles(r.get("lights") or {}, lamp_test, top=wy + th + 10, height=wh - th - 10)
 
         if self.show_help and self.help:
             self.draw_help()
 
-    def draw_power(self, state, remaining, error, sim, lights_on=()):
+    def draw_power(self, state, remaining, error, sim, lights_on=(), brake_reminder=False):
         """Key-off overlay: countdown, then 'shutting down' (or a blank 'power off' in the simulator)."""
         if state == SHUTDOWN and sim:
             self.screen.fill((0, 0, 0))
@@ -471,6 +488,8 @@ class Dash:
         if lights_on:                   # drawn last, on top of the box
             self.text("LIGHTS STILL ON: " + ", ".join(lights_on), 32, AMBER,
                       center=(cx, box.bottom - self.px(108)))
+        if brake_reminder and state == COUNTDOWN:
+            self.pill("SET PARKING BRAKE", 34, RED, midtop=(cx, box.bottom + self.px(16)))
 
     # ---- light tell-tales (board rev 2.1): top-right corner of the RPM panel, only while a light is on
 
@@ -581,6 +600,10 @@ class Dash:
             states.append(st["tilt"]["state"])
         if st.get("temps"):
             states.append(st["temps"]["box"][0])
+        if st.get("cht"):
+            states += [st["cht"]["state"], st["cht"]["spread"][0]]
+        if st.get("brake"):
+            states.append(st["brake"]["state"])
         alarms, warns = states.count(ALARM), states.count(WARN) + states.count(UNKNOWN)
         if lamp_test:
             status = ("LAMP TEST", AMBER)
@@ -599,6 +622,11 @@ class Dash:
                 free_right = self.pill(label, 26, AMBER, midright=(free_right, rect.centery)).left - self.px(10)
             if self.service_due:
                 free_right = self.pill("SERVICE DUE", 26, TRACK, midright=(free_right, rect.centery)).left - self.px(10)
+            brake = st.get("brake")
+            if brake and brake["applied"]:     # the parking brake tell-tale: red (P), flashing when driving against it
+                on = brake["state"] == OK or flash
+                free_right = self.pill("(P) BRAKE", 26, RED if on else RED_DARK,
+                                       midright=(free_right, rect.centery)).left - self.px(10)
         words, color = (("ENGINE RUNNING", GREEN) if st["running"] else st["header_note"] if st.get("header_note") else
                         ("CRANKING", AMBER) if st.get("cranking") else
                         ("ENGINE OFF", DIM) if st["off"] else ("ENGINE ?", AMBER))
@@ -925,6 +953,37 @@ class Dash:
 
         self.text(status, 104, color, max_w=rect.w - self.px(28), center=(rect.centerx, rect.y + rect.h * 0.68))
 
+    def draw_cht(self, rect, cht, flash, lamp_test, design_h):
+        """Cylinder head temperatures: the hottest big, every cylinder small underneath (coloured by its state)."""
+        rank = {OK: 0, UNKNOWN: 1, WARN: 2, ALARM: 3}
+        state = ALARM if lamp_test else max(cht["state"], cht["spread"][0], key=rank.get)
+        bg = TILE_BG[state] if not (state == ALARM and not flash) else RED_DARK
+        radius = self.px(16)
+        pygame.draw.rect(self.screen, bg, rect, border_radius=radius)
+        pygame.draw.rect(self.screen, COLOR[state], rect, width=self.px(4), border_radius=radius)
+        short = design_h < 100
+        self.text("CYL HEAD TEMP", 22 if short else 26, TEXT, max_w=rect.w - self.px(20),
+                  midtop=(rect.centerx, rect.y + self.px(6 if short else 10)))
+        hot = cht["hot"]
+        big = "--" if hot is None else f"{settings.fmt(hot[1])}"
+        color = {ALARM: TEXT, UNKNOWN: DIM}.get(cht["state"], COLOR[cht["state"]])
+        if cht["spread"][0] == WARN and cht["state"] == OK:
+            big, color = cht["spread"][1], AMBER                    # a cylinder running cool says so
+        cyls = cht["cyls"]
+        if short or len(cyls) < 2:
+            if hot and len(cyls) > 1:
+                big += f"  #{hot[0]}"
+            self.text(big, 40 if short else 56, color, max_w=rect.w - self.px(24),
+                      center=(rect.centerx, rect.y + rect.h * (0.66 if short else 0.58)))
+            return
+        self.text(big, 46, color, max_w=rect.w - self.px(24), center=(rect.centerx, rect.y + rect.h * 0.45))
+        cw = (rect.w - self.px(16)) / len(cyls)
+        for i, (name, s, t) in enumerate(cyls):
+            cx = rect.x + self.px(8) + cw * (i + 0.5)
+            ink = {OK: TEXT, UNKNOWN: DIM, WARN: AMBER, ALARM: RED if flash else TEXT}[s]
+            val = "--" if t is None else f"{settings.to_units(t):.0f}"
+            self.text(f"{name}:{val}", 20, ink, max_w=cw - self.px(4), center=(cx, rect.bottom - self.px(18)))
+
     def draw_light_tiles(self, lights, lamp_test, top, height):
         """FRONT / REAR / WORK as big tiles, always shown: dark when off, lit solid when on."""
         inputs = light_inputs(self.cfg)
@@ -1007,7 +1066,7 @@ def engine_status(st, hours, service, events):
     """The web page's ENGINE STATUS: (value, state, note, link), the most serious first. The link opens the
     Alarms page, or the Service page at the item (/service#engine_oil). Engine alarms count until
     they're cleared from the HISTORY list; service items count when marked engine = true in [service]."""
-    open_ev = [e for e in events.newest_first() if e.get("src") in ("oil_pressure", "rpm")]
+    open_ev = [e for e in events.newest_first() if e.get("src") in ("oil_pressure", "rpm", "cht", "cht_spread")]
     rows = [(it, state, left) for it, state, left, _ in service.status(hours) if it.get("engine")]
     short = service.short_h if hasattr(service, "short_h") else 10
     checks = [r for r in rows if r[1] == "due" and service.interval(r[0]) <= short]     # the 10-hour daily checks
@@ -1015,14 +1074,19 @@ def engine_status(st, hours, service, events):
     soon = sorted((r for r in rows if r[1] == "soon"), key=lambda r: r[2])
     oil = [e for e in open_ev if e["src"] == "oil_pressure" and e["level"] == "alarm"]
     rpm = [e for e in open_ev if e["src"] == "rpm" and e["level"] in ("alarm", "warn")]
+    hot = [e for e in open_ev if e["src"] in ("cht", "cht_spread") and e["level"] in ("alarm", "warn")]
     if oil:
         return "CHECK ENGINE", "alarm", f"oil pressure {oil[0].get('detail', '')} at {oil[0]['h']:.1f} h: see Alarms", "/alarms"
+    if hot and hot[0]["level"] == "alarm":
+        return "CHECK ENGINE", "alarm", f"head temperature {hot[0].get('detail', '')} at {hot[0]['h']:.1f} h: see Alarms", "/alarms"
     if due:
         it, _, left = due[0]
         more = f" (+{len(due) - 1} more)" if len(due) > 1 else ""
         return "MX REQUIRED", "alarm", f"{it['name'].capitalize()}: overdue {-left:.1f} h{more}", f"/service#{it['id']}"
     if rpm:
         return "CHECK ENGINE", "warn", f"engine speed: {rpm[0].get('detail', '')} at {rpm[0]['h']:.1f} h: see Alarms", "/alarms"
+    if hot:
+        return "CHECK ENGINE", "warn", f"head temperature: {hot[0].get('detail', '')} at {hot[0]['h']:.1f} h: see Alarms", "/alarms"
     if checks:
         it, _, left = checks[0]
         return "CHECKS DUE", "warn", f"{it['name'].capitalize()} overdue {-left:.1f} h: {service.task(it)}", f"/service#{it['id']}"
@@ -1077,6 +1141,18 @@ def live_status(st, readings, cfg, hours, service, pi_temp, fan, wifi, power_sta
             tiles.append(tile(settings.probe_label(name), val))
     if st.get("tilt"):
         tiles.append(tile("Machine Angle", st["tilt"]["text"], st["tilt"]["state"]))
+    cht = st.get("cht")
+    if cht:
+        hot = cht["hot"]
+        each = "  ".join(f"{n}: {'--' if t is None else round(settings.to_units(t))}" for n, _, t in cht["cyls"])
+        worst = "alarm" if cht["state"] == ALARM else "warn" if WARN in (cht["state"], cht["spread"][0]) else cht["state"]
+        tiles.append(tile("Cyl Head Temp", "--" if hot is None else f"{settings.fmt(hot[1])}" +
+                          (f" #{hot[0]}" if len(cht["cyls"]) > 1 else ""), worst,
+                          cht["spread"][1] if cht["spread"][0] == WARN else each))
+    if st.get("brake"):
+        b = st["brake"]
+        tiles.append(tile("Parking Brake", "SET" if b["applied"] else "OFF", b["state"],
+                          "set while working above idle" if b["state"] == WARN else ""))
     ev_states, labels = event_states(st, cfg)
     word = {"warn": "WARNING", "alarm": "ALARM", "unknown": "NO SIGNAL"}
     active = [[labels.get(k, k.upper()), s, d or "", word[s]] for k, (s, d) in ev_states.items() if s in word]
@@ -1154,6 +1230,9 @@ def main():
     tilt_sensor = None if args.sim or not tilt_status.enabled else TiltSensor(cfg)
     temp_status = TempStatus(cfg)
     temp_sensors = None if args.sim or not temp_status.enabled else TempSensors(cfg)
+    cht_status = CHTStatus(cfg, sim=args.sim)
+    cht_sensors = None if args.sim or not cht_status.enabled else CHTSensors(cfg)
+    brake_status = BrakeStatus(cfg, sim=args.sim)
     power = PowerManager(cfg, sim=args.sim, start_off=args.sim)
     buttons = Buttons(cfg, sim=args.sim)
     screens = Screens(cfg)
@@ -1248,6 +1327,8 @@ def main():
                 service.session_later.clear()             # "remind me at the next start"
             if was == ON and power_state == COUNTDOWN:
                 alerts.keyoff()                           # soft falling chime: the dash is shutting down
+                if brake_status.reminder():
+                    alerts.notice()                       # and a beep: SET PARKING BRAKE
                 events.close_all(now)
                 usage.save(now)
                 screens.go_home()
@@ -1322,6 +1403,11 @@ def main():
                                             (tilt_sensor.angles() if tilt_sensor else None), now)
             temp_snap = readings.get("temps") if args.sim else (temp_sensors.snapshot() if temp_sensors else None)
             st["temps"] = temp_status.update(temp_snap)
+            cht_snap = readings.get("cht") if args.sim else (cht_sensors.snapshot() if cht_sensors else None)
+            st["cht"] = cht_status.update(cht_snap, st["running"] and not st["tach_fault"], now)
+            if st["cht"]:
+                st["cht"]["detail"] = cht_status.detail(st["cht"])
+            st["brake"] = brake_status.update(readings.get("brake"), st["running"], readings["rpm"], now)
             lamp_test = now < t0 + d.get("lamp_test_seconds", 0)      # includes the splash time
             if lamp_test:
                 alerts.update({}, now)          # only the test chirp
@@ -1335,7 +1421,7 @@ def main():
             usage.update(now, power_state == ON, st["running"] and not st["tach_fault"], st["cranking"],
                          readings["rpm"], readings["volts"], temp_snap, health.sim_temp if args.sim else health.temp,
                          hourmeter.hours, cool_pending=bool(cd and cd[0] in (COOLING, IDLE_NEEDED)),
-                         speed=hourmeter.sim_speed)
+                         speed=hourmeter.sim_speed, cht=cht_snap)
             usb.update(now, power_state == ON and not lamp_test, st["running"] or st["cranking"])
             if power_state != ON:
                 alerts.update({}, now)          # no horn or tones while shutting down
@@ -1383,7 +1469,8 @@ def main():
             screens.draw(dash, ctx)
             splash.draw(screen, now - boot)
             if power_state != ON:
-                dash.draw_power(power_state, power.remaining(now), power.error, args.sim, lights_on)
+                dash.draw_power(power_state, power.remaining(now), power.error, args.sim, lights_on,
+                                brake_reminder=brake_status.reminder())
             pygame.display.flip()
             clock.tick(d["fps"])
     finally:
@@ -1391,6 +1478,8 @@ def main():
             tilt_sensor.close()
         if temp_sensors:
             temp_sensors.close()
+        if cht_sensors:
+            cht_sensors.close()
         health.close()
         fan.close()
         events.close_all(time.monotonic())

@@ -349,6 +349,8 @@ def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500
                     key=settings.probe_label)
     sensors = [("E-Box Temp", "box", deg_fmt)]
     sensors += [(settings.probe_label(n), f"p_{n}", deg_fmt) for n in probes] or [("Outside Temp", "amb", deg_fmt)]
+    cyls = sorted({k[4:-4] for d in keys for k in days[d] if k.startswith("cht_") and k.endswith("_max")})
+    sensors += [(f"Cyl {n} head (running)", f"cht_{n}", deg_fmt) for n in cyls]
     sensors += [("Pi CPU", "pi", deg_fmt), ("Battery while running", "v_run", volt_fmt)]
     extremes = [(label, ext(f + "_min", False, fmt), ext(f + "_max", True, fmt)) for label, f, fmt in sensors]
     extremes = [x for x in extremes if x[1] or x[2]]

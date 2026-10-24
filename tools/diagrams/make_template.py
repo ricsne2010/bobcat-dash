@@ -1,4 +1,4 @@
-"""Printable 1:1 drilling template for the breakout board (rev 2.9, 162 x 159 mm).
+"""Printable 1:1 drilling template for the breakout board (rev 3.0, 162 x 159 mm).
 
     pip install reportlab
     python3 make_template.py        -> ../../breakout-board/docs/mounting-template.pdf
@@ -24,7 +24,7 @@ HOLE_D = 3.2
 # Connector footprints (board mm, x0, y0, x1, y1), for planning where the wires come and go.
 _Z = [   # rev 2.7 coordinates; rev 2.8 added a 25 mm strip on top, so they shift down 25 mm below
     ("TO PI (ribbon)", 30.4, -23.8, 89.9, -13.8), ("TILT", 151.0, 9.4, 157.8, 26.2),
-    ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 41.1, 157.8, 54.9),
+    ("COIL", 0.0, 42.4, 13.1, 55.7), ("TEMP\nPROBE", 151.0, 41.1, 157.8, 54.9), ("AUX", 151.0, 93.4, 160.8, 107.6),
     ("POWER", 3.9, 120.9, 22.3, 134.0), ("5V", 22.9, 120.9, 36.2, 134.0), ("HORN", 36.9, 120.9, 50.2, 134.0),
     ("TACH", 50.9, 120.9, 69.3, 134.0), ("SWITCHES", 75.0, 120.9, 98.4, 134.0), ("FUEL", 98.9, 120.9, 112.2, 134.0),
     ("SILENCE", 112.9, 120.9, 126.2, 134.0), ("LIGHTS", 126.9, 120.9, 145.3, 134.0),
@@ -114,7 +114,7 @@ def main():
                         "Print on US Letter at \"Actual size\" / 100 %  (NOT \"Fit\", \"Shrink oversized pages\" or "
                         "\"Scale to fit\").  Check both rulers before drilling.")
     c.drawCentredString(PAGE_W / 2, PAGE_H - 19 * mm,
-                        "Board rev 2.9, 162 x 159 mm (6.378 x 6.260 in).  Viewed from the FRONT (parts side): tape it to "
+                        "Board rev 3.0, 162 x 159 mm (6.378 x 6.260 in).  Viewed from the FRONT (parts side): tape it to "
                         "the box's back wall as you'll see the board.")
 
     # TOP marker

@@ -1,0 +1,1736 @@
+(kicad_sch (version 20250114) (generator "eeschema") (generator_version "9.0") (uuid "90c4dd60-4892-4da8-a23b-3076d96e2def") (paper "A3") (title_block (title "M.O.S.S. CHT + Parking Brake Board - Bobcat M700") (date "2026-10-24") (rev "1.0") (comment 1 "Thermocouple amplifier carrier and parking brake input, on the breakout board AUX plug")) (lib_symbols (symbol "Connector_Generic:Conn_01x02"
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "J"
+			(at 0 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Conn_01x02"
+			(at 0 -5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "connector"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "Connector*:*_1x??_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "Conn_01x02_1_1"
+			(rectangle
+				(start -1.27 1.27)
+				(end 1.27 -3.81)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(rectangle
+				(start -1.27 0.127)
+				(end 0 -0.127)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -2.413)
+				(end 0 -2.667)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "Pin_1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -2.54 0)
+				(length 3.81)
+				(name "Pin_2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Connector_Generic:Conn_01x09"
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "J"
+			(at 0 12.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Conn_01x09"
+			(at 0 -12.7 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x09, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "connector"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "Connector*:*_1x??_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "Conn_01x09_1_1"
+			(rectangle
+				(start -1.27 11.43)
+				(end 1.27 -11.43)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(rectangle
+				(start -1.27 10.287)
+				(end 0 10.033)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 7.747)
+				(end 0 7.493)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 5.207)
+				(end 0 4.953)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 2.667)
+				(end 0 2.413)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 0.127)
+				(end 0 -0.127)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -2.413)
+				(end 0 -2.667)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -4.953)
+				(end 0 -5.207)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -7.493)
+				(end 0 -7.747)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -10.033)
+				(end 0 -10.287)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(pin passive line
+				(at -5.08 10.16 0)
+				(length 3.81)
+				(name "Pin_1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 7.62 0)
+				(length 3.81)
+				(name "Pin_2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 5.08 0)
+				(length 3.81)
+				(name "Pin_3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 2.54 0)
+				(length 3.81)
+				(name "Pin_4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "Pin_5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -2.54 0)
+				(length 3.81)
+				(name "Pin_6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -5.08 0)
+				(length 3.81)
+				(name "Pin_7"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -7.62 0)
+				(length 3.81)
+				(name "Pin_8"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -10.16 0)
+				(length 3.81)
+				(name "Pin_9"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "9"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Connector_Generic:Conn_02x03_Odd_Even"
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "J"
+			(at 1.27 5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Conn_02x03_Odd_Even"
+			(at 1.27 -5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, double row, 02x03, odd/even pin numbering scheme (row 1 odd numbers, row 2 even numbers), script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "connector"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "Connector*:*_2x??_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "Conn_02x03_Odd_Even_1_1"
+			(rectangle
+				(start -1.27 3.81)
+				(end 3.81 -3.81)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(rectangle
+				(start -1.27 2.667)
+				(end 0 2.413)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 0.127)
+				(end 0 -0.127)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.27 -2.413)
+				(end 0 -2.667)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start 3.81 2.667)
+				(end 2.54 2.413)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start 3.81 0.127)
+				(end 2.54 -0.127)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start 3.81 -2.413)
+				(end 2.54 -2.667)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(pin passive line
+				(at -5.08 2.54 0)
+				(length 3.81)
+				(name "Pin_1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 7.62 2.54 180)
+				(length 3.81)
+				(name "Pin_2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "Pin_3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 7.62 0 180)
+				(length 3.81)
+				(name "Pin_4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -5.08 -2.54 0)
+				(length 3.81)
+				(name "Pin_5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 7.62 -2.54 180)
+				(length 3.81)
+				(name "Pin_6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Device:D"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "D"
+			(at 0 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Diode"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Device" "D"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "diode"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "D_0_1"
+			(polyline
+				(pts
+					(xy -1.27 1.27) (xy -1.27 -1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 0) (xy -1.27 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "D_1_1"
+			(pin passive line
+				(at -3.81 0 0)
+				(length 2.54)
+				(name "K"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 3.81 0 180)
+				(length 2.54)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Device:LED"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "D"
+			(at 0 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "LED"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Light emitting diode"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Sim.Pins" "1=K 2=A"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "LED diode"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "LED* LED_SMD:* LED_THT:*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "LED_0_1"
+			(polyline
+				(pts
+					(xy -3.048 -0.762) (xy -4.572 -2.286) (xy -3.81 -2.286) (xy -4.572 -2.286) (xy -4.572 -1.524)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.778 -0.762) (xy -3.302 -2.286) (xy -2.54 -2.286) (xy -3.302 -2.286) (xy -3.302 -1.524)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.27 0) (xy 1.27 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.27 -1.27) (xy -1.27 1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 -1.27) (xy 1.27 1.27) (xy -1.27 0) (xy 1.27 -1.27)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "LED_1_1"
+			(pin passive line
+				(at -3.81 0 0)
+				(length 2.54)
+				(name "K"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 3.81 0 180)
+				(length 2.54)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Device:R"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "R"
+			(at 0 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at -1.778 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "R_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "R_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Isolator:PC817"
+		(pin_names
+			(offset 1.016)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "U"
+			(at -5.08 5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "PC817"
+			(at 0 5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_DIP:DIP-4_W7.62mm"
+			(at -5.08 -5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" "http://www.soselectronic.cz/a_info/resource/d/pc817.pdf"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Description" "DC Optocoupler, Vce 35V, CTR 50-300%, DIP-4"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "NPN DC Optocoupler"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "DIP*W7.62mm*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "PC817_0_1"
+			(rectangle
+				(start -5.08 3.81)
+				(end 5.08 -3.81)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(polyline
+				(pts
+					(xy -5.08 2.54) (xy -2.54 2.54) (xy -2.54 -0.635)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -3.175 -0.635) (xy -1.905 -0.635)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 -0.635) (xy -2.54 -2.54) (xy -5.08 -2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 -0.635) (xy -3.175 0.635) (xy -1.905 0.635) (xy -2.54 -0.635)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -0.508 0.508) (xy 0.762 0.508) (xy 0.381 0.381) (xy 0.381 0.635) (xy 0.762 0.508)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -0.508 -0.508) (xy 0.762 -0.508) (xy 0.381 -0.635) (xy 0.381 -0.381) (xy 0.762 -0.508)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.54 1.905) (xy 2.54 -1.905)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.54 0.635) (xy 4.445 2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 3.048 -1.651) (xy 3.556 -1.143) (xy 4.064 -2.159) (xy 3.048 -1.651)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 4.445 2.54) (xy 5.08 2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 4.445 -2.54) (xy 2.54 -0.635)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 4.445 -2.54) (xy 5.08 -2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "PC817_1_1"
+			(pin passive line
+				(at -7.62 2.54 0)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -7.62 -2.54 0)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 7.62 -2.54 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 7.62 2.54 180)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Mechanical:MountingHole"
+		(pin_names
+			(offset 1.016)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "H"
+			(at 0 5.08 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 0 3.175 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Mounting Hole without connection"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "mounting hole"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "MountingHole*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "MountingHole_0_1"
+			(circle
+				(center 0 0)
+				(radius 1.27)
+				(stroke
+					(width 1.27)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)) (symbol (lib_id "Connector_Generic:Conn_01x09") (at 38.10 38.10 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b6494c81-45eb-43f2-b6c1-4e180797d8a7") (property "Reference" "M1" (at 38.10 24.13 0) (effects (font (size 1.27 1.27)))) (property "Value" "CYL 1 MCP9601" (at 38.10 52.07 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x09_P2.54mm_Vertical" (at 38.10 38.10 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 38.10 38.10 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket for an Adafruit MCP9601 module (5165): cylinder 1, I2C 0x60. VIN GND SCL SDA ALERT1-4 ADDR" (at 38.10 38.10 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "68d5b9c0-d954-4c0d-a1c6-822bb693e0e0")) (pin "2" (uuid "95ada8a6-2430-4c82-9a29-57da1fc2f9f2")) (pin "3" (uuid "158a5ee9-68b9-4f64-974f-67704bb60e3f")) (pin "4" (uuid "f4457d5d-ff86-4237-bfef-ddaa91f0dcdb")) (pin "5" (uuid "8af1b279-6c1d-44cc-b940-dd7f6cc53d4e")) (pin "6" (uuid "4077a6e4-7e48-403c-829b-b4c5a987a46f")) (pin "7" (uuid "71cb5875-4d76-4c64-841e-cf0fdef1639f")) (pin "8" (uuid "17c3df2f-e73b-4e8e-9d49-51da05e88890")) (pin "9" (uuid "b437c71c-2548-4b05-b5f0-b3902d56c4a8")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "M1") (unit 1))))) (no_connect (at 33.02 38.10) (uuid "a98873d1-b698-4bd2-9a82-75f6d3c1db6a")) (no_connect (at 33.02 40.64) (uuid "b00f519d-0b86-4225-b8e4-4e5a17d60f53")) (no_connect (at 33.02 43.18) (uuid "5c0a5c9e-8252-452e-995e-e6671b3783a8")) (no_connect (at 33.02 45.72) (uuid "83b27ccc-38fd-47cb-9463-8c994d8583d0")) (wire (pts (xy 33.02 27.94) (xy 35.56 27.94)) (stroke (width 0) (type default)) (uuid "f630dda5-5aa7-4c6d-9dcb-f40453921f5d")) (label "+3V3" (at 35.56 27.94 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "833794f0-6ce8-496d-a0f0-ccd164ba9c37")) (wire (pts (xy 33.02 30.48) (xy 35.56 30.48)) (stroke (width 0) (type default)) (uuid "c81d192f-2b7b-455a-b20c-9c3e8a17038e")) (label "GND" (at 35.56 30.48 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "6ea8c8b2-43a7-49ec-bee0-2766efd18cb2")) (wire (pts (xy 33.02 33.02) (xy 35.56 33.02)) (stroke (width 0) (type default)) (uuid "80fa7f6b-6084-4562-9cda-6ffc1474d6e2")) (label "SCL" (at 35.56 33.02 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "872ac444-e40e-4217-88b8-9a77d138db41")) (wire (pts (xy 33.02 35.56) (xy 35.56 35.56)) (stroke (width 0) (type default)) (uuid "1737859a-bd0f-4be3-a259-eeea21a1b0f7")) (label "SDA" (at 35.56 35.56 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "fb5a82c0-8fc8-4e77-97b6-7c631caf38b9")) (wire (pts (xy 33.02 48.26) (xy 35.56 48.26)) (stroke (width 0) (type default)) (uuid "db3d154a-1823-49a4-8c26-8364918d39f6")) (label "GND" (at 35.56 48.26 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "13629900-793d-4bcd-af5d-1fa7073b17e8")) (text "CYL 1: I2C 0x60" (exclude_from_sim no) (at 12.70 22.86 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "88712dc4-d916-4679-8384-ff3f7f4532bb")) (symbol (lib_id "Connector_Generic:Conn_01x09") (at 38.10 71.12 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "1fc559bc-b477-4acd-b4e1-400e1dd342c6") (property "Reference" "M2" (at 38.10 57.15 0) (effects (font (size 1.27 1.27)))) (property "Value" "CYL 2 MCP9601" (at 38.10 85.09 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x09_P2.54mm_Vertical" (at 38.10 71.12 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 38.10 71.12 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket for an Adafruit MCP9601 module (5165): cylinder 2, I2C 0x65. VIN GND SCL SDA ALERT1-4 ADDR" (at 38.10 71.12 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "2bb5acb0-6171-4202-8789-bbad84fe4076")) (pin "2" (uuid "de3011be-596e-4879-a1f1-d1657ce1f3a8")) (pin "3" (uuid "4a2301c2-b1b7-4a3e-a4cb-33dce4b7d96f")) (pin "4" (uuid "2db3ce48-783f-4f5e-87a0-25c0c0355237")) (pin "5" (uuid "e3cfcbe9-94d0-4c1f-aa5d-8f0984c4ce2a")) (pin "6" (uuid "e79a1ced-f7d1-4402-97f8-f73c23bd0530")) (pin "7" (uuid "d90ef6fb-8f4e-4d7c-850f-bcc0365fac54")) (pin "8" (uuid "e0500094-651b-4f27-ad51-89ee751c267f")) (pin "9" (uuid "a1c940a1-cb2f-477a-9de1-08112f6b556b")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "M2") (unit 1))))) (no_connect (at 33.02 71.12) (uuid "d664c2d4-b626-487b-8418-3b655917fcd8")) (no_connect (at 33.02 73.66) (uuid "f8e23f80-24a3-4ef4-bffd-b0be4fb40c29")) (no_connect (at 33.02 76.20) (uuid "49bbe7fd-4e8e-4df5-9aac-cc22ccbc2e1b")) (no_connect (at 33.02 78.74) (uuid "a39d5549-82f7-4ca5-a076-30b2cc11e57e")) (wire (pts (xy 33.02 60.96) (xy 35.56 60.96)) (stroke (width 0) (type default)) (uuid "0baa1231-e384-4cda-a3fc-c17919c2d1b2")) (label "+3V3" (at 35.56 60.96 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f71d7174-742e-4acd-b112-e2d1a67068ba")) (wire (pts (xy 33.02 63.50) (xy 35.56 63.50)) (stroke (width 0) (type default)) (uuid "65916cd8-49ee-4540-b7f5-4d73f3d33a71")) (label "GND" (at 35.56 63.50 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "1018320e-ab3f-4a21-bb56-48acff37f252")) (wire (pts (xy 33.02 66.04) (xy 35.56 66.04)) (stroke (width 0) (type default)) (uuid "7908951f-5c88-45eb-9466-b09c5c3ed257")) (label "SCL" (at 35.56 66.04 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "759697a0-b3dd-453e-9cd0-8455f6d7446b")) (wire (pts (xy 33.02 68.58) (xy 35.56 68.58)) (stroke (width 0) (type default)) (uuid "06dd2c43-74d2-4a23-81b9-26aae6de5ef9")) (label "SDA" (at 35.56 68.58 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4575342e-986b-4b29-9bf3-2efdaeebacc9")) (wire (pts (xy 33.02 81.28) (xy 35.56 81.28)) (stroke (width 0) (type default)) (uuid "29b2b054-4188-481b-8d16-d790575b294c")) (label "ADDR2" (at 35.56 81.28 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "52b50c75-2a0d-4101-89cb-4f24a5d0189e")) (text "CYL 2: I2C 0x65" (exclude_from_sim no) (at 12.70 55.88 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "fb23ad24-14ca-4f8b-a4d5-ed93e1cb50af")) (symbol (lib_id "Connector_Generic:Conn_01x09") (at 38.10 104.14 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "c391af77-903d-4d17-b3df-8a6eafeaa70e") (property "Reference" "M3" (at 38.10 90.17 0) (effects (font (size 1.27 1.27)))) (property "Value" "CYL 3 MCP9601" (at 38.10 118.11 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x09_P2.54mm_Vertical" (at 38.10 104.14 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 38.10 104.14 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket for an Adafruit MCP9601 module (5165): cylinder 3, I2C 0x66. VIN GND SCL SDA ALERT1-4 ADDR" (at 38.10 104.14 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "682c5cd6-5293-476e-9e90-90a5d69c59fc")) (pin "2" (uuid "3ebe551f-d299-4b53-9dc5-79cb0386afb4")) (pin "3" (uuid "28752f57-8b88-4dea-a93b-7539d54650ea")) (pin "4" (uuid "ea9a3c67-a539-47ac-92cb-255636d5a396")) (pin "5" (uuid "a07548b0-670e-4806-b214-74546bba9c45")) (pin "6" (uuid "a5dd2f1e-7260-4510-be49-a13d3134c882")) (pin "7" (uuid "eb0ea141-922e-43c8-b1a0-07082ab8d5e2")) (pin "8" (uuid "92ee3f80-348a-4aad-8aa1-9d319db9f395")) (pin "9" (uuid "b3d438fe-edf8-4457-be62-fe4394f8ca8a")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "M3") (unit 1))))) (no_connect (at 33.02 104.14) (uuid "49fc543d-28bb-408c-84e0-9674f8b86ab4")) (no_connect (at 33.02 106.68) (uuid "3d950aa6-57c2-4e0e-b613-064b1acf09f9")) (no_connect (at 33.02 109.22) (uuid "a4925318-ab24-424f-b511-8b23b468c93f")) (no_connect (at 33.02 111.76) (uuid "bedf6191-fe52-4f6f-9b76-7e2a8e664509")) (wire (pts (xy 33.02 93.98) (xy 35.56 93.98)) (stroke (width 0) (type default)) (uuid "4a67d0c0-63e4-40c2-9291-907857f3c179")) (label "+3V3" (at 35.56 93.98 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "20f273c7-c347-4b47-a099-1298ffc600ff")) (wire (pts (xy 33.02 96.52) (xy 35.56 96.52)) (stroke (width 0) (type default)) (uuid "0687531d-29d0-42b7-9122-ce7800c64b7d")) (label "GND" (at 35.56 96.52 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "8a7256d9-b0f3-4a50-a781-3e97d5711a7d")) (wire (pts (xy 33.02 99.06) (xy 35.56 99.06)) (stroke (width 0) (type default)) (uuid "65f7ae15-9664-4b62-998f-0ac22fd61529")) (label "SCL" (at 35.56 99.06 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "85bf0638-3658-40c1-bf0b-bae577c3e40d")) (wire (pts (xy 33.02 101.60) (xy 35.56 101.60)) (stroke (width 0) (type default)) (uuid "15bd8c0f-0060-4050-8b45-7f15761ec0db")) (label "SDA" (at 35.56 101.60 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "a5ca1f8f-4406-43c6-8014-89427215deee")) (wire (pts (xy 33.02 114.30) (xy 35.56 114.30)) (stroke (width 0) (type default)) (uuid "71618463-41e9-436d-8e02-62a57cacf7c5")) (label "ADDR3" (at 35.56 114.30 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "a5832f3a-8d6b-4aad-8ec5-9a745a25d00c")) (text "CYL 3: I2C 0x66" (exclude_from_sim no) (at 12.70 88.90 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "1307789b-5d3a-4dbc-8bc6-190ed2adfff9")) (symbol (lib_id "Connector_Generic:Conn_01x09") (at 38.10 137.16 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "a96541be-4447-4bb0-b3f5-62a73672d40c") (property "Reference" "M4" (at 38.10 123.19 0) (effects (font (size 1.27 1.27)))) (property "Value" "CYL 4 MCP9601" (at 38.10 151.13 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x09_P2.54mm_Vertical" (at 38.10 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 38.10 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket for an Adafruit MCP9601 module (5165): cylinder 4, I2C 0x67. VIN GND SCL SDA ALERT1-4 ADDR" (at 38.10 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "6ec73ae7-9a3c-4018-988a-49efde6acacd")) (pin "2" (uuid "9d2f6294-292d-4b83-81cd-302b5b48099a")) (pin "3" (uuid "5f6f9500-ca47-44aa-ba6d-7e9e2b66d571")) (pin "4" (uuid "c3352d49-6c7c-4208-a2f8-b17a9b448d73")) (pin "5" (uuid "b3ac78eb-e70d-499a-aeca-8d170a381551")) (pin "6" (uuid "7efd4cb9-6933-4079-b55f-d65d2762c7a0")) (pin "7" (uuid "652eb21d-299e-4257-ba1d-f557e36ffe22")) (pin "8" (uuid "378bcd00-0fbf-4cb9-9ade-dbb32556314c")) (pin "9" (uuid "30c1a420-8e04-43a2-ac57-1af630283e57")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "M4") (unit 1))))) (no_connect (at 33.02 137.16) (uuid "8824ebfd-1ed6-419d-aee8-1e54c53dc2b8")) (no_connect (at 33.02 139.70) (uuid "12d242e2-a26e-488d-a3d5-a40b4aba0f37")) (no_connect (at 33.02 142.24) (uuid "4e9c8884-ad35-47e3-9ec1-e90ef73190b5")) (no_connect (at 33.02 144.78) (uuid "6ab17549-1c2d-452e-9147-fafd02aa0074")) (no_connect (at 33.02 147.32) (uuid "3edaea20-1cf5-4602-9e95-db226fbe671d")) (wire (pts (xy 33.02 127.00) (xy 35.56 127.00)) (stroke (width 0) (type default)) (uuid "d790c41b-1e18-4d3e-b8bb-5b9471e1a441")) (label "+3V3" (at 35.56 127.00 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "fb66e12d-975c-43a2-bc09-bb100d8c22ae")) (wire (pts (xy 33.02 129.54) (xy 35.56 129.54)) (stroke (width 0) (type default)) (uuid "c0c149db-291c-4311-87d9-4d3d60bd9e60")) (label "GND" (at 35.56 129.54 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "6c5db780-db12-4658-af3b-c0e89945c30e")) (wire (pts (xy 33.02 132.08) (xy 35.56 132.08)) (stroke (width 0) (type default)) (uuid "688ca3c5-d8e0-4eb1-bcd5-82b0cfdf769a")) (label "SCL" (at 35.56 132.08 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3ef76dc0-c75b-4a28-abe1-15196743074b")) (wire (pts (xy 33.02 134.62) (xy 35.56 134.62)) (stroke (width 0) (type default)) (uuid "bbfd1cfc-b8a8-4ade-8ba6-5231b9e58667")) (label "SDA" (at 35.56 134.62 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "371ef2f2-c085-4022-ba0f-72ea552d5676")) (text "CYL 4: I2C 0x67" (exclude_from_sim no) (at 12.70 121.92 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "019b1066-43d5-4f7c-b954-1b15a75b2f63")) (symbol (lib_id "Connector_Generic:Conn_02x03_Odd_Even") (at 132.08 45.72 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "4ec346cf-e674-430a-9436-d4045ecd2a22") (property "Reference" "J1" (at 132.08 36.83 0) (effects (font (size 1.27 1.27)))) (property "Value" "AUX TO BREAKOUT J18" (at 132.08 54.61 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_Molex:Molex_Micro-Fit_3.0_43045-0612_2x03_P3.00mm_Vertical" (at 132.08 45.72 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 132.08 45.72 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Molex Micro-Fit 3.0 43045-0612 2x3 (latching): to the breakout board's AUX plug J18, pin to pin. 1 GND, 2 3V3, 3 SDA, 4 SCL, 5 BRAKE (GPIO 9), 6 BRAKE 12V. Housing 43025-0600 both ends" (at 132.08 45.72 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "6c516cc4-61cd-47d4-98c2-f1551ffb6e84")) (pin "2" (uuid "c9a0645c-9a31-4f1e-a4e3-4d305817204b")) (pin "3" (uuid "69705d70-3df4-4172-820b-0b52e4305c86")) (pin "4" (uuid "aebcc4f7-0450-4b11-aa15-813f2551475a")) (pin "5" (uuid "cd471a36-8e22-4c46-ae6a-16660f47a135")) (pin "6" (uuid "f3134d1c-71f5-4efc-90ac-588b4d713992")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "J1") (unit 1))))) (wire (pts (xy 127.00 43.18) (xy 124.46 43.18)) (stroke (width 0) (type default)) (uuid "843d11be-4912-4fd2-9cfd-faa53fd63557")) (label "GND" (at 124.46 43.18 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "261c5983-3aba-47a7-8b56-05cf086a41d5")) (wire (pts (xy 139.70 43.18) (xy 142.24 43.18)) (stroke (width 0) (type default)) (uuid "1da92a9d-b7e5-445f-a510-f7c84dce1e72")) (label "+3V3" (at 142.24 43.18 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3496e22a-f369-4abc-8851-4068bf31a142")) (wire (pts (xy 127.00 45.72) (xy 124.46 45.72)) (stroke (width 0) (type default)) (uuid "f09262c7-731e-453d-a9c1-e9d20cc54da4")) (label "SDA" (at 124.46 45.72 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "364c995b-1222-4c87-b2d3-7814db886e3f")) (wire (pts (xy 139.70 45.72) (xy 142.24 45.72)) (stroke (width 0) (type default)) (uuid "503691c8-f3dc-41f6-b1e5-5049a0691356")) (label "SCL" (at 142.24 45.72 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "01dfd84f-32c9-4b37-968f-30a003f7efca")) (wire (pts (xy 127.00 48.26) (xy 124.46 48.26)) (stroke (width 0) (type default)) (uuid "237be35d-b422-4ae5-8046-5d13104548b1")) (label "BRAKE" (at 124.46 48.26 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "6d2e2f2e-2ecb-43f1-a606-76212054466a")) (wire (pts (xy 139.70 48.26) (xy 142.24 48.26)) (stroke (width 0) (type default)) (uuid "a78cb5db-ad83-4e07-b02a-0f9034297d99")) (label "BRAKE_12V" (at 142.24 48.26 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "c8656c4f-25a9-4dd1-b303-3b56103405c5")) (symbol (lib_id "Connector_Generic:Conn_01x02") (at 228.60 76.20 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "77876b9d-bb15-4293-9fe2-a5fd36ffad87") (property "Reference" "J2" (at 228.60 69.85 0) (effects (font (size 1.27 1.27)))) (property "Value" "PARK BRAKE" (at 228.60 82.55 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_Phoenix_MSTB:PhoenixContact_MSTBA_2,5_2-G-5,08_1x02_P5.08mm_Horizontal" (at 228.60 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 228.60 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Phoenix MSTB 2-pin: parking brake switch (closed = brake set) between SW and GND" (at 228.60 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "ea422169-dcab-4f9d-85e4-dc38b80946f0")) (pin "2" (uuid "8a5b6575-ec2a-4ce7-b407-0e90c16a5188")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "J2") (unit 1))))) (wire (pts (xy 223.52 76.20) (xy 220.98 76.20)) (stroke (width 0) (type default)) (uuid "c51c0c40-b24e-4011-b4f1-c5f3810a75c8")) (label "BRK_SW" (at 220.98 76.20 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "f102a23b-0827-426a-9d75-aecf4e8aef47")) (wire (pts (xy 223.52 78.74) (xy 220.98 78.74)) (stroke (width 0) (type default)) (uuid "75eefe37-b4a8-4f5b-970c-2cbc591d6613")) (label "GND" (at 220.98 78.74 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "c94496b7-daee-4fed-b18d-710faf129413")) (symbol (lib_id "Isolator:PC817") (at 190.50 76.20 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "3a92a2d0-1961-4471-a1c5-7ff8ebc63167") (property "Reference" "U1" (at 190.50 68.58 0) (effects (font (size 1.27 1.27)))) (property "Value" "PC817" (at 190.50 83.82 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Package_DIP:DIP-4_W7.62mm" (at 190.50 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 190.50 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Optocoupler: parking brake input" (at 190.50 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "5bc2d592-f64d-4bf7-a203-536c448ed6f1")) (pin "2" (uuid "83227353-e581-4e70-99ae-9d15efef4274")) (pin "3" (uuid "b186a3d8-d650-4990-bb44-945ec9310e8d")) (pin "4" (uuid "73d08850-b4f4-40b7-9081-031f3a83c7a1")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "U1") (unit 1))))) (wire (pts (xy 182.88 73.66) (xy 180.34 73.66)) (stroke (width 0) (type default)) (uuid "4e3324d4-aea6-4494-a8f7-ef6dfc8a04b7")) (label "BRK_M" (at 180.34 73.66 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "4b924e4e-97f6-4149-b967-6173991b0fe9")) (wire (pts (xy 182.88 78.74) (xy 180.34 78.74)) (stroke (width 0) (type default)) (uuid "28edcd73-7ad1-4602-8959-3754bb180b2f")) (label "BRK_SW" (at 180.34 78.74 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "fb99f74f-3e32-4295-bea4-95c83c6d31ff")) (wire (pts (xy 198.12 78.74) (xy 200.66 78.74)) (stroke (width 0) (type default)) (uuid "b0b12927-6e13-4a6c-aa71-51b47305f2b0")) (label "GND" (at 200.66 78.74 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "8d492ce0-b9f8-40cc-9e80-706d4fe04408")) (wire (pts (xy 198.12 73.66) (xy 200.66 73.66)) (stroke (width 0) (type default)) (uuid "d0503685-1d5e-4fad-b366-66b45b29961c")) (label "BRAKE" (at 200.66 73.66 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "37212592-6318-46fa-b56f-0076e5fdf11c")) (symbol (lib_id "Device:LED") (at 147.32 76.20 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "884b3508-dc55-454d-abae-e414060d9335") (property "Reference" "D1" (at 147.32 71.12 0) (effects (font (size 1.27 1.27)))) (property "Value" "LED_green" (at 147.32 81.28 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "LED_THT:LED_D3.0mm" (at 147.32 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 147.32 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "BRAKE SET: lit while the brake is set" (at 147.32 76.20 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "b660e37f-959a-4dae-a8ff-3d30254e2f56")) (pin "2" (uuid "ce6187a4-0a03-4f1b-89dd-cbdff4656d38")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "D1") (unit 1))))) (wire (pts (xy 151.13 76.20) (xy 153.67 76.20)) (stroke (width 0) (type default)) (uuid "de1f7df6-25e4-44f6-9432-578be5da89be")) (label "BRAKE_12V" (at 153.67 76.20 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "0be4c69c-c114-46bf-b940-9a031c367a36")) (wire (pts (xy 143.51 76.20) (xy 140.97 76.20)) (stroke (width 0) (type default)) (uuid "7cf0a01b-e035-4146-9e8f-5b01e19fb1b2")) (label "BRK_M" (at 140.97 76.20 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "f58d57a1-13e5-4704-bdfc-b8680af00af5")) (symbol (lib_id "Device:D") (at 147.32 96.52 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "152d302c-0d44-497f-94db-3e16d06a80d4") (property "Reference" "D2" (at 147.32 91.44 0) (effects (font (size 1.27 1.27)))) (property "Value" "1N4148" (at 147.32 101.60 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal" (at 147.32 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 147.32 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Reverse-spike protection across the LEDs" (at 147.32 96.52 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "1c777e65-36dd-449f-a57c-dce4347c769c")) (pin "2" (uuid "9228dc54-2d40-4d91-9361-2187478c25ae")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "D2") (unit 1))))) (wire (pts (xy 151.13 96.52) (xy 153.67 96.52)) (stroke (width 0) (type default)) (uuid "7a2a4871-1d03-4dda-9ec4-78d60f1f0951")) (label "BRK_SW" (at 153.67 96.52 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "93663036-9477-4bd7-9141-4a9f7ac35703")) (wire (pts (xy 143.51 96.52) (xy 140.97 96.52)) (stroke (width 0) (type default)) (uuid "d49b5780-3ee0-4ed0-a80f-e097d0d4813b")) (label "BRAKE_12V" (at 140.97 96.52 0) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "bcb2c7fb-41d9-4c62-b1f5-48ee164cedf7")) (symbol (lib_id "Device:R") (at 132.08 124.46 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "2364e38f-2dc8-4d26-bdba-82801ab85191") (property "Reference" "R1" (at 134.62 121.92 0) (effects (font (size 1.27 1.27)))) (property "Value" "22k" (at 134.62 127.00 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 132.08 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 132.08 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket 2 address: 0x65" (at 132.08 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "712cd5db-13e4-46b0-bc1f-c5fc2a4ab373")) (pin "2" (uuid "de48b96d-02de-4cb6-8bca-ae9e179ef94c")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "R1") (unit 1))))) (wire (pts (xy 132.08 120.65) (xy 134.62 120.65)) (stroke (width 0) (type default)) (uuid "74711fd3-0c56-429d-8c5d-a079557e0623")) (label "ADDR2" (at 134.62 120.65 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "522f6856-9f2d-4b92-b160-d2eed421015d")) (wire (pts (xy 132.08 128.27) (xy 134.62 128.27)) (stroke (width 0) (type default)) (uuid "9bc53beb-5348-4242-bd71-efd816369ac8")) (label "GND" (at 134.62 128.27 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "5554fe93-8fa2-48a1-868b-cbae40b774df")) (symbol (lib_id "Device:R") (at 160.02 124.46 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "0fff02cd-a064-41fb-9ac0-23d560e94630") (property "Reference" "R2" (at 162.56 121.92 0) (effects (font (size 1.27 1.27)))) (property "Value" "43k" (at 162.56 127.00 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 160.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 160.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Socket 3 address: 0x66" (at 160.02 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (pin "1" (uuid "9774cbad-32f4-4f2d-b201-cb52b8064963")) (pin "2" (uuid "af133f12-ac05-4015-b1a4-4b138ebbc833")) (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "R2") (unit 1))))) (wire (pts (xy 160.02 120.65) (xy 162.56 120.65)) (stroke (width 0) (type default)) (uuid "0eb3811a-1b83-41c8-ba3c-e6a2de312b94")) (label "ADDR3" (at 162.56 120.65 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4c35db67-4b0a-43a4-a5e8-35525b1e498f")) (wire (pts (xy 160.02 128.27) (xy 162.56 128.27)) (stroke (width 0) (type default)) (uuid "4928dbf6-c430-4d99-a3c2-6f403140f582")) (label "GND" (at 162.56 128.27 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "8410587d-da95-48ec-bf55-7b7e1f4672e2")) (symbol (lib_id "Mechanical:MountingHole") (at 190.50 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "c9b8bd6f-d34b-410a-821b-2b3425b41f75") (property "Reference" "H1" (at 190.50 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M3" (at 190.50 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_3.2mm_M3" (at 190.50 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 190.50 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Board mounting hole" (at 190.50 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H1") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 200.66 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "08545956-128d-4344-9b94-28a394a0a9e3") (property "Reference" "H2" (at 200.66 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M3" (at 200.66 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_3.2mm_M3" (at 200.66 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 200.66 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Board mounting hole" (at 200.66 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H2") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 210.82 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "ce5ad105-d706-4e3d-a42c-43c8fc6b0224") (property "Reference" "H3" (at 210.82 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M3" (at 210.82 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_3.2mm_M3" (at 210.82 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 210.82 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Board mounting hole" (at 210.82 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H3") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 220.98 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "ed777b8b-bf2d-46b0-bf10-2596209954f1") (property "Reference" "H4" (at 220.98 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M3" (at 220.98 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_3.2mm_M3" (at 220.98 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 220.98 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Board mounting hole" (at 220.98 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H4") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 231.14 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "21a8cc95-e5ef-403e-b591-c71050c57ec2") (property "Reference" "H5" (at 231.14 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 231.14 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 231.14 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 231.14 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 231.14 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H5") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 241.30 124.46 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "7222f8d4-ed44-474f-803f-613b4e6ec1bc") (property "Reference" "H6" (at 241.30 119.38 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 241.30 129.54 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 241.30 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 241.30 124.46 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 241.30 124.46 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H6") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 190.50 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "8cdcda85-3a52-4256-a46d-e3e0b7dae9b7") (property "Reference" "H7" (at 190.50 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 190.50 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 190.50 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 190.50 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 190.50 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H7") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 200.66 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "8281d806-2cf1-48f0-b0da-021ec3eb3487") (property "Reference" "H8" (at 200.66 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 200.66 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 200.66 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 200.66 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 200.66 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H8") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 210.82 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "8b4870a3-b5a8-4a82-869f-e2d311770121") (property "Reference" "H9" (at 210.82 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 210.82 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 210.82 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 210.82 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 210.82 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H9") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 220.98 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "c613ac51-8e3e-4526-b2b1-dc12654be6b7") (property "Reference" "H10" (at 220.98 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 220.98 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 220.98 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 220.98 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 220.98 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H10") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 231.14 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "f9db2554-e077-40c1-b523-a2f327fd3083") (property "Reference" "H11" (at 231.14 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 231.14 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 231.14 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 231.14 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 231.14 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H11") (unit 1))))) (symbol (lib_id "Mechanical:MountingHole") (at 241.30 137.16 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "0121b169-4200-4b4a-9924-c256ae542e33") (property "Reference" "H12" (at 241.30 132.08 0) (effects (font (size 1.27 1.27)))) (property "Value" "M2.5" (at 241.30 142.24 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "MountingHole:MountingHole_2.7mm_M2.5" (at 241.30 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Datasheet" "~" (at 241.30 137.16 0) (effects (font (size 1.27 1.27)) (hide yes))) (property "Description" "Standoff hole for an MCP9601 module (11 mm M2.5 standoff)" (at 241.30 137.16 0) (effects (font (size 1.27 1.27)) (hide yes)))  (instances (project "cht-board" (path "/90c4dd60-4892-4da8-a23b-3076d96e2def" (reference "H12") (unit 1))))) (text "CHT + PARK BRAKE BOARD" (exclude_from_sim no) (at 101.60 17.78 0) (effects (font (size 2.54 2.54)) (justify left)) (uuid "df2b3c4b-d3bc-4b36-b6fb-e74fccbd88f7")) (text "Up to four Adafruit MCP9601 thermocouple amplifiers (5165), one per cylinder: each takes its Type K" (exclude_from_sim no) (at 101.60 22.86 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "8ce242e1-7794-4aa2-bb2e-7f6665756c21")) (text "thermocouple in its own screw terminal. ADDR sets the address: socket 1 to GND 0x60, 2 by 22k 0x65," (exclude_from_sim no) (at 101.60 26.67 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "ef8ff5d3-b75e-47a5-81df-461382180655")) (text "3 by 43k 0x66, 4 open 0x67. ALERT1-4 not used. Parking brake: +12V via 2.2k (breakout board) -> D1 -> U1 LED" (exclude_from_sim no) (at 101.60 30.48 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "c8524bb5-6cec-4617-9d4a-24312eefb2b9")) (text "-> J2 SW; the switch closes to GND when the brake is set: BRAKE (GPIO 9) low. Pins with the same label are joined." (exclude_from_sim no) (at 101.60 34.29 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "4e5ed041-1505-4159-a62f-6bcf566e2ec4")) (text "H1-H4: M3 board mounting. H5-H12: M2.5, two per module, 11 mm standoffs." (exclude_from_sim no) (at 190.50 144.78 0) (effects (font (size 1.27 1.27)) (justify left)) (uuid "d7c5227a-78f5-4472-bdf6-126dfc7c45bf")) (sheet_instances (path "/" (page "1"))) (embedded_fonts no))

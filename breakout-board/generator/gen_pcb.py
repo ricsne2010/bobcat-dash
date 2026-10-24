@@ -111,6 +111,10 @@ P.update({"H15": (94.0, 4.5 - TOP, 0), "H16": (72.2, 117.0, 0), "H17": (4.5, 62.
 # the board sensor and its pull-up, top to bottom
 P.update({"J14": (154.8, 38.0 + TEMP_DY, 270), "R87": (153.6, 50.0 + TEMP_DY, 270), "R88": (158.4, 50.0 + TEMP_DY, 270),
           "U11": (153.5, 62.5 + TEMP_DY, 0), "R86": (156.0, 67.0 + TEMP_DY, 270)})
+# rev 3.0: AUX plug to the CHT board (2x3 Micro-Fit, turned on its side) under the TEMP column; its two
+# resistors standing in the strip between the power-hold test points and the column's edge line
+AUX_X, AUX_Y = 157.8, 97.5                     # pin 1
+P.update({"J18": (AUX_X, AUX_Y, 270), "R96": (148.0, 93.4, 270), "R97": (148.0, 103.6, 270)})
 
 # coil tach input. Rev 2.4: everything that sees the raw coil voltage is in the boxed HIGH VOLTAGE corner on
 # the left edge: its own plug J12 (plug face flush with the edge), R80 -> R81 folded back in two rows, then the
@@ -258,9 +262,11 @@ for p in PARTS:
         ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
     if p["ref"] in FLAT_REF:
         ref.SetPosition(V(x + 3.81, y)); ref.SetTextAngleDegrees(0); ref.SetTextSize(SZ(0.8, 0.8))
+    if p["ref"] in ("R96", "R97"):       # rev 3.0: standing beside the AUX box: label on the left, along the body
+        ref.SetPosition(V(x - 2.3, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
     if p["ref"] in VERT_CAP:            # standing disc capacitors: label along the body
         ref.SetPosition(V(x, y + 2.5)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
-    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "J17"):
+    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "J17", "J18"):
         ref.SetVisible(False)
 
 # ---------------------------------------------------------------- copper-free rings under the standoffs
@@ -454,7 +460,7 @@ TITLE_X = 133.5
 silk("M.O.S.S.", TITLE_X, -16.0, 1.8, bold=True, align="left")     # Maintenance, Operations, and Service System
 silk("BREAKOUT BOARD", TITLE_X, -12.8, 1.5, bold=True, align="left")
 silk("Bobcat M700", TITLE_X, -9.8, 1.0, bold=True, align="left")
-silk("rev 2.9  2026-10", TITLE_X, -7.6, 1.0, align="left")
+silk("rev 3.0  2026-10", TITLE_X, -7.6, 1.0, align="left")
 silk("Project Moon Pi", TITLE_X, -5.4, 0.9, align="left")
 # rev 2.7: TEMPERATURE column: probe pin names beside the connector
 for i, lab in enumerate(["GND", "DQ", "3V3"]):
@@ -524,6 +530,8 @@ group_box([(149.75, 114.75), (1.2, 114.75), (1.2, 90.6), (128.05, 90.6), (128.05
 silk_line(149.75, 40.3, 149.75, 114.75)
 group_box(rect(150.4, 31.2 + TEMP_DY, 161.4, 83.4 + TEMP_DY), "TEMP", 155.9)
 group_box(rect(136.2, TILT_Y - 3.8, 161.4, TILT_Y + 15.4), "TILT (I2C)", 148.8)
+group_box(rect(150.4, 92.0, 161.4, 111.4), "AUX", 155.9)                 # rev 3.0: to the CHT board
+silk("CHT + BRAKE", 155.9, 110.0, 0.8, bold=True)
 
 # HIGH VOLTAGE corner: double outline, warning triangles, open to the board edge where J12 plugs in
 HV = (0.0, 40.6, 39.6, 57.0)
