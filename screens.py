@@ -22,6 +22,8 @@ import pygame
 import settings
 from maintcode import weak
 from service import DUE, SOON, clock_valid
+from pihealth import computer_model
+from version import BOARD_REV, BUILD_DATE, SOURCE, VERSION
 
 try:
     import qrcode                   # python3-qrcode: a code to scan to join the service Wi-Fi (optional)
@@ -253,7 +255,7 @@ class Screens:
                     self.modal = None
         elif k == "sysmenu":
             if b in ("left", "right"):
-                m["act"] = max(0, min(3, m["act"] + (1 if b == "right" else -1)))
+                m["act"] = max(0, min(4, m["act"] + (1 if b == "right" else -1)))
                 m.pop("msg", None)
             elif b == "back":
                 self.modal = None
@@ -265,6 +267,11 @@ class Screens:
                 self.modal = {"kind": "clock", "back": m, "act": 0}
             elif b == "ok" and m["act"] == 3:
                 self._change_code(ctx, m)
+            elif b == "ok" and m["act"] == 4:
+                self.modal = {"kind": "about", "back": m}
+        elif k == "about":
+            if b in ("ok", "back"):
+                self.modal = m["back"]
         elif k == "clock":
             if b in ("left", "right"):
                 m["act"] = max(0, min(2, m.get("act", 0) + (1 if b == "right" else -1)))
@@ -548,6 +555,29 @@ class Screens:
                    midtop=(box.centerx, box.y + d.px(320)))
         hints = [("back", "cancel")] if locked else [("lr", "digit"), ("ok", "next"), ("back", "back")]
         self._hints(d, hints, box.bottom - d.px(32), right=box.right - d.px(24))
+
+    def _draw_about(self, d, ctx):
+        """SYSTEM > ABOUT: the patch, the system's name, the software and board versions, the computer."""
+        box = self._box(d, 960, 600, TEXT)
+        patch = d.logo(250, big=True) if hasattr(d, "logo") else None
+        if patch:
+            d.screen.blit(patch, patch.get_rect(midleft=(box.x + d.px(30), box.centery - d.px(16))))
+        x = box.x + d.px(310)
+        y = box.y + d.px(34)
+        d.text(d.name if hasattr(d, "name") else "M.O.S.S.", 52, TEXT, topleft=(x, y))
+        d.text("Maintenance, Operations, and Service System", 26, DIM, topleft=(x, y + d.px(64)))
+        d.text("Bobcat M700 skid steer (1978)  -  Project Moon Pi", 26, DIM, topleft=(x, y + d.px(98)))
+        sm = ctx.get("svcmode")
+        rows = [("Software", f"v{VERSION}  ({BUILD_DATE})"), ("Breakout board", f"rev {BOARD_REV}"),
+                ("Computer", computer_model()), ("Engine hours", f"{ctx['hours']:.1f} h"),
+                ("Service Wi-Fi", sm.ssid if sm else "-"), ("Source", f"{SOURCE}  (MIT licence)")]
+        for i, (a, v) in enumerate(rows):
+            ry = y + d.px(160 + 46 * i)
+            d.text(a, 26, DIM, topleft=(x, ry))
+            d.text(v, 28, TEXT, max_w=box.right - x - d.px(220), topleft=(x + d.px(200), ry - d.px(1)))
+        d.text("Display font B612 (designed for Airbus cockpits, SIL Open Font License)", 22, DIM,
+               midbottom=(box.centerx, box.bottom - d.px(70)))
+        self._hints(d, [("back", "close")], box.bottom - d.px(32), right=box.right - d.px(24))
 
     def _draw_recovery(self, d, ctx):
         box = self._box(d, 820, 460, GREEN)
@@ -1015,18 +1045,18 @@ class Screens:
                 self._hints(d, [("lr", "choose"), ("ok", "do it"), ("back", "close")], box.bottom - d.px(28),
                             right=box.right - d.px(24))
         elif k == "sysmenu":
-            box = self._box(d, 900, 330, TEXT)
+            box = self._box(d, 960, 330, TEXT)
             d.text("SYSTEM", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
             notes = ["the dash's own Wi-Fi and web page", f"temperatures in °{settings.units()}: OK switches",
                      time.strftime("%b %d %Y  %H:%M") if clock_valid() else "NOT SET",
-                     "change the maintenance code (the old code first)"]
+                     "change the maintenance code (the old code first)", "software version, board and build"]
             if m.get("msg"):
                 d.text(m["msg"], 28, AMBER, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(86)))
             else:
                 d.text(notes[m["act"]], 28, AMBER if m["act"] == 2 and not clock_valid() else DIM,
                        midtop=(box.centerx, box.y + d.px(86)))
-            self._buttons_row(d, box, ["SERVICE WI-FI", f"UNITS  °{settings.units()}", "CLOCK", "MX CODE"], m["act"],
-                              box.y / d.sy + 160)
+            self._buttons_row(d, box, ["SERVICE WI-FI", f"UNITS  °{settings.units()}", "CLOCK", "MX CODE", "ABOUT"],
+                              m["act"], box.y / d.sy + 160)
             self._hints(d, [("lr", "choose"), ("ok", "open" if m["act"] != 1 else "switch"), ("back", "close")],
                         box.bottom - d.px(32), right=box.right - d.px(24))
         elif k == "clock":
@@ -1105,6 +1135,8 @@ class Screens:
             self._draw_wifi(d, ctx)
         elif k == "code":
             self._draw_code(d, ctx)
+        elif k == "about":
+            self._draw_about(d, ctx)
         elif k == "codechg":
             box = self._box(d, 800, 400, AMBER)
             d.text("CHANGING THE CODE", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))

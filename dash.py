@@ -347,6 +347,21 @@ class Dash:
         self.light_style = lc.get("display", "icons") if lc.get("enabled") else "icons"
         self.tilt_on = cfg.get("tilt", {}).get("enabled", True)
         self.service_due = False   # an item on the service schedule is due: small pill in the header
+        self._logos = {}
+
+    def logo(self, size, big=False):
+        """The Project Moon Pi patch (splash/logo*.png, tools/make_logo.py) at size design px, or None if missing."""
+        key = (size, big)
+        if key not in self._logos:
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "splash", "logo.png" if big else "logo-small.png")
+            try:
+                img = pygame.image.load(path)
+                img = img.convert_alpha() if pygame.display.get_surface() else img
+                self._logos[key] = pygame.transform.smoothscale(img, (self.px(size), self.px(size)))
+            except (pygame.error, FileNotFoundError) as e:
+                log.info("no logo picture (%s)", e)
+                self._logos[key] = None
+        return self._logos[key]
 
     def R(self, x, y, w, h):
         return pygame.Rect(round(x * self.sx), round(y * self.sy), round(w * self.sx), round(h * self.sy))
@@ -536,7 +551,12 @@ class Dash:
     def draw_header(self, st, lamp_test, flash):
         rect = self.R(0, 0, DESIGN_W, 56)
         pygame.draw.rect(self.screen, HEADER, rect)
-        logo = self.text(self.name, 44, TEXT, midleft=(rect.x + self.px(20), rect.centery))
+        patch = self.logo(46)
+        x = rect.x + self.px(12)
+        if patch:
+            self.screen.blit(patch, patch.get_rect(midleft=(x, rect.centery)))
+            x += patch.get_width() + self.px(8)
+        logo = self.text(self.name, 44, TEXT, midleft=(x, rect.centery))
         left_edge = logo.right
         temps = st.get("temps")
         if temps:                       # breakout box temperature (pill when hot) and the ambient probes

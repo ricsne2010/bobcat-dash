@@ -18,6 +18,16 @@ import settings
 
 log = logging.getLogger("pihealth")
 
+
+def computer_model():
+    """'Raspberry Pi 5 Model B Rev 1.0' (from the device tree), or 'Simulator on macOS' elsewhere."""
+    try:
+        with open("/proc/device-tree/model") as f:
+            return f.read().strip("\x00\n ")
+    except OSError:
+        import platform
+        return "Simulator on " + {"Darwin": "macOS"}.get(platform.system(), platform.system())
+
 TEMP_FILE = "/sys/class/thermal/thermal_zone0/temp"
 UNDERVOLT_NOW, THROTTLED_NOW, SOFT_TEMP_NOW, UNDERVOLT_SEEN = 0x1, 0x4, 0x8, 0x10000
 

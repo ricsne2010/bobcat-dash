@@ -452,6 +452,8 @@ dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:
 .list a small{color:var(--dim)}.msg{padding:12px 14px;border-radius:10px;margin:10px 0;background:var(--line)}
 .msg.bad{background:var(--bad);color:var(--on-color)}.msg.good{background:var(--good);color:var(--on-color)}
 footer{color:var(--dim);font-size:13px;text-align:center;padding:10px 16px 24px}
+header .logo{width:34px;height:34px;margin-right:-8px;flex:none}
+.about{display:flex;gap:22px;align-items:center;flex-wrap:wrap}.about img{width:150px;height:150px;flex:none}.about dl{flex:1;min-width:240px}
 header .theme{margin-left:auto;font:inherit;font-size:13px;padding:5px 12px;border-radius:6px;cursor:pointer;background:transparent;
 color:var(--hdr-ink);border:1px solid var(--hdr-dim)}
 """
@@ -515,6 +517,22 @@ FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
 FONTS = (("B612-Regular.ttf", 400), ("B612-Bold.ttf", 700))
 
 
+LOGO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "splash")
+LOGOS = {"logo.png": "logo.png", "logo-small.png": "logo-small.png"}     # served at /logo/<name>
+
+
+def logo_src(embed=False, name="logo-small.png"):
+    """The patch picture: /logo/... from the dash, or inside the file for a stand-alone report ('' if missing)."""
+    if not embed:
+        return "/logo/" + name
+    import base64
+    try:
+        with open(os.path.join(LOGO_DIR, name), "rb") as f:
+            return "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    except OSError:
+        return ""
+
+
 def font_css(embed=False):
     """@font-face for B612 (fonts/, SIL OFL): served by the dash at /fonts/..., or inside the file for a
     stand-alone report (a USB stick copy opens the same on any computer)."""
@@ -541,9 +559,11 @@ def page(title, body, nav=None, active="", version="", foot="", embed_fonts=Fals
         links = "<nav>" + "".join(f'<a href="{h}" class="{"on" if h == active else ""}">{n}</a>' for h, n in nav) + "</nav>"
     switch = ('<button class="theme" id="theme" onclick="mossTheme()" title="Switch between light and dark">DARK</button>'
               if nav else "")
+    src = logo_src(embed_fonts)
+    patch = f'<img class="logo" src="{src}" alt="Project Moon Pi" width="34" height="34">' if src else ""
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
             f'content="width=device-width,initial-scale=1"><title>{esc(title)} - M.O.S.S.</title>{THEME_HEAD}'
-            f"<style>{font_css(embed_fonts)}{CSS}</style></head><body><header><b>M.O.S.S.</b><span class='ver'>Bobcat M700</span>"
+            f"<style>{font_css(embed_fonts)}{CSS}</style></head><body><header>{patch}<b>M.O.S.S.</b><span class='ver'>Bobcat M700</span>"
             f'<span class="ver">{esc(version)}</span>{links}{switch}</header><main><h1>{esc(title)}</h1>{body}</main>'
             f"<footer>{foot}</footer>{THEME_JS}</body></html>")
 

@@ -1,5 +1,6 @@
 """Stage 1: place footprints, assign nets, outline, silkscreen. Run with KiCad's Python."""
 import json
+import math
 import os
 import sys
 
@@ -344,6 +345,7 @@ edge_arc(r, H - r, r, H, 90); edge_arc(r, T + r, 0, T + r, 90)
 def silk(text, x, y, size=1.0, bold=False, align="center", angle=0, layer=pcbnew.F_SilkS):
     t = pcbnew.PCB_TEXT(board)
     t.SetText(text); t.SetPosition(V(x, y)); t.SetLayer(layer)
+    t.SetMirrored(layer == pcbnew.B_SilkS)                  # the back reads the right way round from behind
     t.SetTextSize(SZ(size, size)); t.SetTextThickness(MM(size * (0.2 if bold else 0.15)))
     t.SetHorizJustify({"center": pcbnew.GR_TEXT_H_ALIGN_CENTER, "left": pcbnew.GR_TEXT_H_ALIGN_LEFT,
                        "right": pcbnew.GR_TEXT_H_ALIGN_RIGHT}[align])
@@ -447,11 +449,13 @@ silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
 # rev 2.8: title block in the top strip, beside the logo (the ribbon to the Pi leaves the strip clear above J1)
-silk("M.O.S.S.", 106.0, -16.0, 1.8, bold=True, align="left")     # Maintenance, Operations, and Service System
-silk("BREAKOUT BOARD", 106.0, -12.8, 1.5, bold=True, align="left")
-silk("Bobcat M700", 106.0, -9.8, 1.0, bold=True, align="left")
-silk("rev 2.9  2026-10", 106.0, -7.6, 1.0, align="left")
-silk("Project Moon Pi", 106.0, -5.4, 0.9, align="left")
+# rev 2.9: right of the logo
+TITLE_X = 133.5
+silk("M.O.S.S.", TITLE_X, -16.0, 1.8, bold=True, align="left")     # Maintenance, Operations, and Service System
+silk("BREAKOUT BOARD", TITLE_X, -12.8, 1.5, bold=True, align="left")
+silk("Bobcat M700", TITLE_X, -9.8, 1.0, bold=True, align="left")
+silk("rev 2.9  2026-10", TITLE_X, -7.6, 1.0, align="left")
+silk("Project Moon Pi", TITLE_X, -5.4, 0.9, align="left")
 # rev 2.7: TEMPERATURE column: probe pin names beside the connector
 for i, lab in enumerate(["GND", "DQ", "3V3"]):
     silk(lab, 158.2, 38.0 + TEMP_DY + i * 3.0 + 0.4, 0.8, bold=True, align="left")
@@ -547,7 +551,7 @@ silk("GND", 14.2, 51.98, 0.8, bold=True, align="left")
 # ---------------------------------------------------------------- Project Moon Pi logo (back silkscreen)
 # logo_silk.json comes from make_logo_silk.py. It's on the back, so it's mirrored left-right here
 # and reads the right way round when you turn the board over. Placed in the largest pad-free area.
-LOGO_CENTRE, LOGO_WIDTH = (141.5, -9.5), 26.0   # rev 2.8: on top, in the new top strip beside the title
+LOGO_CENTRE, LOGO_WIDTH = (116.0, -10.2), 30.0   # rev 2.9: larger, left of the title (30 mm is as big as the strip allows)
 
 
 def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):
@@ -578,6 +582,67 @@ def add_logo(path, centre, width_mm, layer=pcbnew.B_SilkS, mirror=True):
 n = add_logo(os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo_silk.json"), LOGO_CENTRE, LOGO_WIDTH,
              layer=pcbnew.F_SilkS, mirror=False)
 print("logo:", n, "silkscreen shapes on top")
+
+# rev 2.9: a few fun lines on the back (the owner's, plus three of Claude's), in pad-free spots at odd sizes and angles.
+# Back silkscreen, mirrored so they read right when the board is turned over. (text, x, y, size, angle)
+FUN = [("DON'T LET THE MAGIC SMOKE OUT", 87.4, -8.6, 2.6, 0),
+       ("One small step for man,\none giant leap for skid-steer kind", 35.5, 3.1, 1.8, 0),
+       ("do you lift, bro?", 139.5, 129.4, 2.0, 8),
+       ("hi mom", 17.9, 63.9, 1.2, -15),
+       ("Keep the shiny side up", 22.4, 129.4, 1.8, 0),                         # Claude's
+       ("Houston, we have a breakout board", 147.3, 48.0, 1.4, 90),             # Claude's
+       ("No bobcats were harmed in the making of this board", 86.3, 90.1, 1.1, 0)]   # Claude's
+for text, x, y, size, angle in FUN:
+    silk(text, x, y, size, bold=True, angle=angle, layer=pcbnew.B_SilkS)
+
+# rev 2.9: and the dash's little skid steer (its tilt picture, dash.py SIDE_VIEW) climbing a dirt hill, on the back.
+SKID_SIDE = {"body": [(-56, -14), (52, -14), (52, -46), (-56, -46)], "cab": [(-30, -46), (26, -46), (20, -100), (-26, -100)],
+             "window": [(-18, -56), (16, -56), (12, -90), (-15, -90)], "engine": [(-56, -46), (-34, -46), (-34, -66), (-56, -66)],
+             "arm": [(-42, -90), (-37, -94), (58, -49), (55, -44)], "bucket": [(52, -52), (76, -52), (82, -4), (56, -2), (50, -20)]}
+SKID_WHEELS = [(-32, -18, 18), (32, -18, 18)]
+HILL_AT, HILL_SCALE, HILL_SLOPE = (143.0, -0.5), 0.12, 20.0      # ground point (mm), mm per design unit, degrees
+
+
+def hill_graphic(at, scale, slope):
+    ox, oy = at
+    c, s_ = math.cos(math.radians(-slope)), math.sin(math.radians(-slope))
+
+    def pt(x, y):                                     # design units on the slope -> board mm, mirrored for the back
+        rx, ry = x * c - y * s_, x * s_ + y * c
+        return ox - rx * scale, oy + ry * scale
+
+    def poly(pts, width=0.2, filled=False):
+        sh = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_POLY)
+        sh.SetPolyPoints([V(*q) for q in pts]); sh.SetLayer(pcbnew.B_SilkS)
+        sh.SetWidth(MM(width)); sh.SetFilled(filled); board.Add(sh)
+
+    def ring(x, y, r, width):
+        sh = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_CIRCLE)
+        sh.SetCenter(V(x, y)); sh.SetEnd(V(x + r, y)); sh.SetLayer(pcbnew.B_SilkS); sh.SetWidth(MM(width)); board.Add(sh)
+
+    v = SKID_SIDE
+    for k in ("body", "engine", "cab", "window", "bucket"):
+        poly([pt(*q) for q in v[k]], 0.22)
+    poly([pt(*q) for q in v["arm"]], 0.15, filled=True)
+    for x, y, r in SKID_WHEELS:
+        cx, cy = pt(x, y)
+        ring(cx, cy, r * scale * 0.7, r * scale * 0.6)            # tyre: a thick ring with the hub showing
+    # the hill: up the slope under the machine, over a rounded top, down the far side to flat ground
+    up = [pt(x, 0) for x in range(-95, 131, 15)]
+    top_x, top_y = up[-1]
+    base_y = pt(-95, 0)[1]
+    crest = [(top_x - 4.0 * math.sin(a / 12 * math.pi / 2), top_y - 0.6 * math.sin(a / 12 * math.pi)) for a in range(1, 13)]
+    far = [(crest[-1][0] - 2.0, top_y + 1.2), (crest[-1][0] - 7.0, base_y)]
+    poly(up + crest + far + [(up[0][0] + 2.0, base_y)], 0.15, filled=True)
+    # flat ground either side, and a few clods kicked up by the back wheel
+    for x0, x1 in ((up[0][0] + 5.0, up[0][0] - 1.0), (far[-1][0] + 0.5, far[-1][0] - 4.0)):
+        poly([(x0, base_y), (x1, base_y), (x1, base_y + 0.25), (x0, base_y + 0.25)], 0.1, filled=True)
+    bx, by = pt(-32, 0)
+    for dx, dy, r in ((3.0, -2.2, 0.35), (4.6, -3.4, 0.28), (5.6, -1.6, 0.25), (3.8, -5.0, 0.22)):
+        ring(bx + dx, by + dy, r / 2, r)
+
+
+hill_graphic(HILL_AT, HILL_SCALE, HILL_SLOPE)
 
 pcbnew.SaveBoard(OUT, board)
 

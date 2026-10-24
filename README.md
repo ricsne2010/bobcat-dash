@@ -513,6 +513,8 @@ python3 tools/fit_splash.py ~/Pictures/my_logo.jpg --size 1024x768              
 python3 tools/fit_splash.py ~/Pictures/my_logo.jpg --size 1024x768 --mode cover    # fill the screen, trim the edges
 ```
 
+   The small patch in the dash's header, on the ABOUT screen, on the web pages and in exported reports is `splash/logo.png` / `splash/logo-small.png`, made from `splash/logo-original.png` by `python3 tools/make_logo.py` (it cuts the black away round the patch).
+
    It writes `splash/splash.png` at exactly the screen's resolution. Use the same resolution as the
    `video=` setting above. `contain` (default) keeps the whole picture and fills the leftover space with
    a colour taken from the picture's edge; `cover` fills the screen and trims whatever doesn't fit.
@@ -759,7 +761,7 @@ Backspace, and a USB keyboard works the same) move between four screens. The gau
 | **GAUGES** | The dash, as always. |
 | **HISTORY** | Every alarm, warning and NO SIGNAL that lasted 2 s or more: date and time, engine hours, what, how long. OK on a line for the details and **CLOSE · CLEAR THIS · CLEAR ALL** (CLOSE is selected; both clears ask for the maintenance code, then **ARE YOU SURE?** with **NO** selected: pick YES with the arrows to go ahead). Clearing only takes alarms off this list: the first line, **ALL ALARMS (archive)**, always shows everything ever recorded, cleared ones marked. Kept through power-off (last 500). |
 | **SERVICE** | The maintenance schedule from the Bobcat 700 manual, by engine hours (hydraulic items also yearly): what's next and when. The first line is the **CLIMATE** setting. |
-| **SYSTEM** | Engine hours, battery, fuel, every sensor's status, box and outside temperatures, the Pi's temperature and warnings, clock, network, SD card space, saving status, software version. **OK** opens **SERVICE WI-FI · UNITS °F/°C · CLOCK**. |
+| **SYSTEM** | Engine hours, battery, fuel, every sensor's status, box and outside temperatures, the Pi's temperature and warnings, clock, network, SD card space, saving status, software version. **OK** opens **SERVICE WI-FI · UNITS °F/°C · CLOCK · MX CODE · ABOUT**. **ABOUT** shows the Project Moon Pi patch, the software version and date, the breakout board revision, the computer, engine hours, the service Wi-Fi name and where the source lives. |
 
 - **Clock:** the day, date, year and time sit in the menu bar ("Fri Oct 23 2026 · 3:42 PM"; smaller, then just the time, when the bar is busy; amber **CLOCK NOT SET** if it isn't). **12- or 24-hour:** SYSTEM > OK > CLOCK > 12-HOUR/24-HOUR, or the web page's Settings (`[display] clock` is the starting default; `"off"` hides it).
 - **◀ ▶** change screen; on HISTORY and SERVICE, **OK** steps into the list, then ◀ ▶ move and OK opens a line.
@@ -830,7 +832,7 @@ the alarm history.
 | **Service** | Each item: interval, last done, hours left, the job; everything marked done. |
 | **Settings** | **Look of these pages:** Same as this device / Light / **Dark (ECAM)**, an Airbus ECAM-style dark page (cyan labels, green normal values, amber caution, red warning); remembered by each phone or laptop, also the LIGHT / DARK button at the top of every page. **Temperature units** (°F / °C, also on the dash: SYSTEM > OK > UNITS). **Clock:** the dash's time beside this phone's or laptop's, the difference, **Sync to this device** (copies the time and time zone, however far off the dash is) and **Set by hand** (a date and time picker); both need the maintenance code and save the time in the Pi 5's RTC. **Time zone** (Arizona, Pacific, Mountain, Central, Eastern, Alaska, Hawaii, UTC, or this device's): **daylight saving comes with it**, so the clock moves in March and November by itself in zones that use it, and never in Arizona. Sync sets the zone from the phone too. |
 | **Downloads** | Everything as one zip, or each file: `report.html`, CSV files (open in Excel), settings, the dash's data (a backup) and log. |
-| **Software** | Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |
+| **Software** | **About**: the patch, M.O.S.S., the machine, software version, board revision, computer, source. Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |
 
 The usage numbers start when this software is installed (`usage.json` in the data folder). The bands are set
 in `[usage]`: idle below 1400 rpm, full throttle from 2600 rpm, overspeed above the tach's amber limit.

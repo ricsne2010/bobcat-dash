@@ -23,7 +23,9 @@ from urllib.parse import parse_qs, urlparse
 import report
 import settings
 import updater
+from pihealth import computer_model
 from service import DUE, SOON, clock_valid
+from version import BOARD_REV, SOURCE
 
 log = logging.getLogger("web")
 esc = html.escape
@@ -169,6 +171,8 @@ class Handler(BaseHTTPRequestHandler):
                 route(q)
             elif url.path.startswith("/fonts/"):
                 self.font_file(url.path[len("/fonts/"):])
+            elif url.path.startswith("/logo/"):
+                self.logo_file(url.path[len("/logo/"):])
             elif url.path.startswith("/download/"):
                 self.download(url.path[len("/download/"):])
             else:
@@ -304,6 +308,23 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def logo_file(self, name):
+        if name not in report.LOGOS:                                # only the logo pictures, by exact name
+            self._send("Not found", "text/plain", 404)
+            return
+        try:
+            with open(os.path.join(report.LOGO_DIR, report.LOGOS[name]), "rb") as f:
+                data = f.read()
+        except OSError:
+            self._send("Not found", "text/plain", 404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
+
     def download(self, name):
         c = self.ctx
         stamp = report.export_name(c["hours"]())
@@ -415,7 +436,16 @@ class Handler(BaseHTTPRequestHandler):
         rows = "".join(f'<tr><td>{esc(report.when(h.get("t")) or "-")}</td><td>{esc(h["what"])}</td>'
                        f'<td>{esc(h["from"])}</td><td>{esc(h["to"])}</td></tr>' for h in reversed(hist[-20:]))
         warn = '<p class="msg bad">The engine is running: stop it before installing or restarting.</p>' if running else ""
-        body = (warn + f'<section class="panel"><h2>Installed</h2><p>Version <b>{esc(v)}</b> ({esc(b)})'
+        about = (f'<section class="panel"><h2>About</h2><div class="about">'
+                 f'<img src="{report.logo_src(name="logo.png")}" alt="Project Moon Pi" width="150" height="150">'
+                 '<dl class="pairs"><dt>System</dt><dd>M.O.S.S. <small>Maintenance, Operations, and Service System</small></dd>'
+                 '<dt>Machine</dt><dd>Bobcat M700 skid steer (1978) <small>Project Moon Pi</small></dd>'
+                 f'<dt>Software</dt><dd>v{esc(v)} <small>{esc(b)}</small></dd><dt>Breakout board</dt><dd>rev {BOARD_REV}</dd>'
+                 f'<dt>Computer</dt><dd>{esc(computer_model())}</dd>'
+                 f'<dt>Source</dt><dd>{SOURCE} <small>MIT licence</small></dd>'
+                 '<dt>Font</dt><dd>B612 <small>designed for Airbus cockpits, SIL Open Font License</small></dd>'
+                 '</dl></div></section>')
+        body = (warn + about + f'<section class="panel"><h2>Installed</h2><p>Version <b>{esc(v)}</b> ({esc(b)})'
                 + (f'. Previous version kept: <b>{esc(prev[0])}</b> ({esc(prev[1])})' if prev else "") + "</p>"
                 + CODE_FIELD.format(id="code2") +
                 '<button class="btn gray" onclick="act(\'/restart\',\'Restart the dash software now?\',\'m2\')">Restart dash</button> '

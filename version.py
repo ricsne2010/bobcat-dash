@@ -5,3 +5,5 @@ then remake the boot splash picture (README: Monitor and boot splash) so it show
 """
 VERSION = "1.0.0"
 BUILD_DATE = "2026-10-22"
+BOARD_REV = "2.9"          # the breakout board this software is made for (breakout-board/README.md)
+SOURCE = "github.com/ricsne2010/bobcat-dash"
