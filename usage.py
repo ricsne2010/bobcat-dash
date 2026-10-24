@@ -13,8 +13,9 @@ Per day (the local date; "no-date" while the clock isn't set) it adds up:
   crank_s    total time on the starter
   stops      engine stops; hot_stops = stopped while the cool-down reminder still wanted idle time
   h0, h1     engine hour meter at the first and last moment seen that day
-  box_max, amb_min, amb_max, pi_max, v_run_min, v_run_max   (temperatures in C, battery volts), each with
-             <name>_t: when it happened (wall clock, only while the clock is set)
+  box_min, box_max, amb_min, amb_max, pi_min, pi_max, v_run_min, v_run_max   (temperatures in C, battery volts)
+  p_<NAME>_min, p_<NAME>_max   each probe on its own (p_OUT_max, p_CAB_min); amb_* = all probes together
+             each with <name>_t: when it happened (wall clock, only while the clock is set)
 
 Kept in the data folder as usage.json, written safely every save_every_s, at key-off and at exit.
 """
@@ -111,12 +112,16 @@ class UsageLog:
         if temps:
             if temps.get("box") is not None:
                 self._extreme(r, "box_max", temps["box"], max, wall)
-            for _, t in temps.get("probes", []):
+                self._extreme(r, "box_min", temps["box"], min, wall)
+            for name, t in temps.get("probes", []):
                 if t is not None:
                     self._extreme(r, "amb_max", t, max, wall)
                     self._extreme(r, "amb_min", t, min, wall)
+                    self._extreme(r, f"p_{name.upper()}_max", t, max, wall)
+                    self._extreme(r, f"p_{name.upper()}_min", t, min, wall)
         if pi_temp is not None:
             self._extreme(r, "pi_max", pi_temp, max, wall)
+            self._extreme(r, "pi_min", pi_temp, min, wall)
         self.dirty = True
         if now - self.last_save >= self.save_every:
             self.save(now)

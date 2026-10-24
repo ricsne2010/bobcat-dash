@@ -799,12 +799,19 @@ digit, BACK = previous):
 - clearing alarms (CLEAR THIS / CLEAR ALL)
 - marking service done
 
-Once entered it stays good, and the menu bar shows **UNLOCKED**, until the engine starts or the key goes off.
+Once entered it stays good, and the screen shows it (a green **MX UNLOCKED** in the menu bar and a green frame round
+the whole screen), until the engine starts or the key goes off.
 
 There's no code out of the box: the first time, the dash asks you to make one up and enter it twice. It can't be
 all one digit (1111) or a run up or down (1234, 4321, 7890). Only a scrambled (salted hash) copy is kept, never the
 code itself. Three wrong codes in a row lock it for 5 minutes, then 10, 20 and so on, up to 2 hours, even across a
 restart. Every wrong code goes into the alarm history as **MAINTENANCE CODE**.
+
+**Changing the code** (say you gave it to someone): SYSTEM > OK > **MX CODE**, with the engine off. Enter the old
+code (always asked, even if already entered), OK on the CHANGING THE CODE screen, enter the new code twice, then
+check it on the screen: **NO** (selected) enters it again, **YES, SAVE IT** saves it. The new code can't be the old
+one, and the same rules apply. The recovery code stays the same, so the paperwork still works. The change goes in
+the alarm history.
 
 **Forgot the code?**
 1. When you make the code, the dash shows an 8-digit **recovery code** once: write it down and keep it with the
@@ -818,10 +825,10 @@ restart. Every wrong code goes into the alarm history as **MAINTENANCE CODE**.
 | Page | Shows |
 |---|---|
 | **Status** | Live gauges, warnings on now, service due, Pi temperature and fan. Updates every 2 s. |
-| **Reports** | The Alarms card opens the alarm list. For 7 days, 30 days, 12 months or all time: engine time split into **full throttle** (normal working), **idle** (warm-up, cool-down), **part throttle** (for warming a cold engine, pump priming or setting timing: flagged amber above 10 %) and **overspeed**, time at each engine speed, engine time by day, key-on time vs engine time, starts and cranks that didn't start, **hot shutdowns** (shut off before the cool-down finished), alarms by type, hottest box and outside temperatures, battery range while running, and a day-by-day table (10 days a page by default, or 20 / 50 / 100; Newer / Older). |
+| **Reports** | The Alarms card opens the alarm list. For 7 days, 30 days, 12 months or all time: engine time split into **full throttle** (normal working), **idle** (warm-up, cool-down), **part throttle** (for warming a cold engine, pump priming or setting timing: flagged amber above 10 %) and **overspeed**, time at each engine speed, engine time by day, key-on time vs engine time, starts and cranks that didn't start, **hot shutdowns** (shut off before the cool-down finished), alarms by type, temperature and battery charts by day, **extremes** (lowest and highest of each sensor: E-box, each probe such as cabin and outside, Pi CPU, battery while running, with the date and time), and a day-by-day table (10 days a page by default, or 20 / 50 / 100; Newer / Older). |
 | **Alarms** | The history list and the archive. |
 | **Service** | Each item: interval, last done, hours left, the job; everything marked done. |
-| **Settings** | **Temperature units** (°F / °C, also on the dash: SYSTEM > OK > UNITS). **Clock:** the dash's time beside this phone's or laptop's, the difference, **Sync to this device** (copies the time and time zone, however far off the dash is) and **Set by hand** (a date and time picker); both need the maintenance code and save the time in the Pi 5's RTC. **Time zone** (Arizona, Pacific, Mountain, Central, Eastern, Alaska, Hawaii, UTC, or this device's): **daylight saving comes with it**, so the clock moves in March and November by itself in zones that use it, and never in Arizona. Sync sets the zone from the phone too. |
+| **Settings** | **Look of these pages:** Same as this device / Light / **Dark (ECAM)**, an Airbus ECAM-style dark page (cyan labels, green normal values, amber caution, red warning); remembered by each phone or laptop, also the LIGHT / DARK button at the top of every page. **Temperature units** (°F / °C, also on the dash: SYSTEM > OK > UNITS). **Clock:** the dash's time beside this phone's or laptop's, the difference, **Sync to this device** (copies the time and time zone, however far off the dash is) and **Set by hand** (a date and time picker); both need the maintenance code and save the time in the Pi 5's RTC. **Time zone** (Arizona, Pacific, Mountain, Central, Eastern, Alaska, Hawaii, UTC, or this device's): **daylight saving comes with it**, so the clock moves in March and November by itself in zones that use it, and never in Arizona. Sync sets the zone from the phone too. |
 | **Downloads** | Everything as one zip, or each file: `report.html`, CSV files (open in Excel), settings, the dash's data (a backup) and log. |
 | **Software** | Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |
 

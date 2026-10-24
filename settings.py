@@ -88,6 +88,14 @@ def hhmm(t=None, seconds=False):
     return _t.strftime("%I:%M:%S %p" if seconds else "%I:%M %p", t).lstrip("0")
 
 
+PROBE_NAMES = {"CAB": "Cabin Temp", "OUT": "Outside Temp", "AMB": "Outside Temp"}
+
+
+def probe_label(name):
+    """A temperature probe's config name as shown: 'OUT' -> 'Outside Temp', 'SEAT' -> 'Seat Temp'."""
+    return PROBE_NAMES.get(name.upper(), name.title() + " Temp")
+
+
 def to_units(c, u=None):
     return c * 9 / 5 + 32 if (u or _units) == "F" else c
 

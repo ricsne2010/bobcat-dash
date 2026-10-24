@@ -327,7 +327,14 @@ class Handler(BaseHTTPRequestHandler):
         u = settings.units()
         btn = lambda x: (f'<button class="btn{"" if x == u else " gray"}" onclick="units(\'{x}\')">°{x}'
                          f'{" (now)" if x == u else ""}</button> ')
-        body = ('<section class="panel"><h2>Temperature units</h2><p>' + btn("F") + btn("C") + '</p>'
+        body = ('<section class="panel"><h2>Look of these pages</h2><p>'
+                '<button class="btn gray" data-pick="auto" onclick="mossTheme(\'auto\')">Same as this device</button> '
+                '<button class="btn gray" data-pick="light" onclick="mossTheme(\'light\')">Light</button> '
+                '<button class="btn gray" data-pick="dark" onclick="mossTheme(\'dark\')">Dark (ECAM)</button></p>'
+                '<p class="hint">Remembered by this phone or laptop, each its own. Dark is laid out like an Airbus ECAM: '
+                'cyan labels, green normal values, amber caution, red warning. Light reads better in bright sun. '
+                'The LIGHT / DARK button at the top switches too.</p></section>'
+                '<section class="panel"><h2>Temperature units</h2><p>' + btn("F") + btn("C") + '</p>'
                 '<p class="hint">Changes every temperature on the dash and on these pages. Saved readings are kept in °C, '
                 'so switching back and forth loses nothing.</p><div id="mu"></div></section>'
                 '<section class="panel"><h2>Clock</h2><p>'

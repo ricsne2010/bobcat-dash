@@ -73,7 +73,7 @@ def total(recs):
             t[k] += r.get(k, 0)
         for b, s in r.get("hist", {}).items():
             t["hist"][b] = t["hist"].get(b, 0) + s
-        for k, f in (("box_max", max), ("amb_max", max), ("amb_min", min), ("pi_max", max),
+        for k, f in (("box_max", max), ("box_min", min), ("amb_max", max), ("amb_min", min), ("pi_max", max), ("pi_min", min),
                      ("v_run_min", min), ("v_run_max", max)):
             if r.get(k) is not None:
                 t[k] = f(t[k], r[k]) if k in t else r[k]
@@ -339,13 +339,19 @@ def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500
             lt = time.localtime(ts)
             return v, time.strftime("%b ", lt) + f"{lt.tm_mday} {lt.tm_year}, " + settings.hhmm(lt)
         return v, ("" if k == "no-date" else datetime.date.fromisoformat(k).strftime("%b %d %Y"))
-    def ext(label, field, hi=True, fmt=None):
+    def ext(field, hi, fmt):
         v, when_ = at(field, hi)
-        shown = "-" if v is None else (fmt(v) if fmt else temp(v, units))
-        return label, shown + (f' <small>· {esc(when_)}</small>' if when_ else "")
-    extremes = [ext("Hottest E-box", "box_max"), ext("Hottest outside", "amb_max"), ext("Coldest outside", "amb_min", False),
-                ext("Hottest Pi CPU", "pi_max"), ext("Lowest battery while running", "v_run_min", False, lambda v: f"{v:.1f} V"),
-                ext("Highest battery while running", "v_run_max", True, lambda v: f"{v:.1f} V")]
+        if v is None:
+            return None
+        return f'<b>{fmt(v)}</b>' + (f'<small>{esc(when_)}</small>' if when_ else "")
+    deg_fmt, volt_fmt = (lambda v: temp(v, units)), (lambda v: f"{v:.1f} V")
+    probes = sorted({k[2:-4] for d in keys for k in days[d] if k.startswith("p_") and k.endswith("_max")},
+                    key=settings.probe_label)
+    sensors = [("E-Box Temp", "box", deg_fmt)]
+    sensors += [(settings.probe_label(n), f"p_{n}", deg_fmt) for n in probes] or [("Outside Temp", "amb", deg_fmt)]
+    sensors += [("Pi CPU", "pi", deg_fmt), ("Battery while running", "v_run", volt_fmt)]
+    extremes = [(label, ext(f + "_min", False, fmt), ext(f + "_max", True, fmt)) for label, f, fmt in sensors]
+    extremes = [x for x in extremes if x[1] or x[2]]
     by_day = daily(days, period, today)
     dates = [d for d, _ in by_day]
     deg = f"°{units}"
@@ -361,8 +367,9 @@ def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500
                '<h3>Battery while running, by day</h3>' + (svg_lines(dates, batt, " V", "Battery voltage by day", 1)
                                                          if any(v is not None for _, _, vs in batt for v in vs) else
                                                          '<p class="hint">The engine didn\'t run in this period.</p>') +
-               '<h3>Extremes</h3><dl class="pairs">' +
-               "".join(f"<dt>{a}</dt><dd>{b}</dd>" for a, b in extremes) + "</dl></section>")
+               '<h3>Extremes</h3>' + ('<table class="ext"><tr><th></th><th>Lowest</th><th>Highest</th></tr>' + "".join(
+                   f'<tr><th scope="row">{esc(a)}</th><td>{lo or "-"}</td><td>{hi or "-"}</td></tr>' for a, lo, hi in extremes)
+                   + "</table>" if extremes else '<p class="hint">No readings in this period.</p>') + "</section>")
     top = {}
     for e in evs:
         top.setdefault(e["what"], [0, 0])[0 if e.get("level") == "alarm" else 1] += 1
@@ -403,11 +410,6 @@ CSS = """
 :root{--bg:#f3f4f6;--panel:#fff;--ink:#14181f;--dim:#5b6472;--line:#dde1e7;--accent:#1f6feb;--hdr:#0b0e13;--hdr-ink:#eceff4;
 --hdr-dim:#98a2b1;--on-color:#fff;--idle:#8b95a5;--part:#d99a00;--full:#2f9e5b;--l-ebox:#c27c00;--l-hot:#d93a3a;--l-cold:#1f6feb;--l-pi:#8250df;--over:#d93a3a;--good:#2f9e5b;--warn:#c27c00;
 --bad:#d93a3a}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;
---line:#2a313c;--accent:#5b9dff;--hdr:#000;--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--l-ebox:#f5b21f;--l-hot:#ff6b6b;--l-cold:#5b9dff;--l-pi:#b392f0;--over:#ef4444;--good:#34c46e;
---warn:#f5a623;--bad:#ef4444;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;--line:#2a313c;--accent:#5b9dff;--hdr:#000;
---idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--l-ebox:#f5b21f;--l-hot:#ff6b6b;--l-cold:#5b9dff;--l-pi:#b392f0;--over:#ef4444;--good:#34c46e;--warn:#f5a623;--bad:#ef4444;color-scheme:dark}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "B612",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{background:var(--hdr);color:var(--hdr-ink);padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));
 display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
@@ -433,6 +435,9 @@ td.part{color:var(--warn);font-weight:700}h3{font-size:14px;color:var(--dim);fon
 table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 td small.hint{white-space:normal;display:block;max-width:46ch}
 th{color:var(--dim);font-weight:600}.scroll{overflow-x:auto}
+table.ext{width:auto;margin:4px auto 0;font-size:16px}table.ext th,table.ext td{text-align:center;white-space:normal;padding:9px 18px;vertical-align:top}
+table.ext th[scope=row]{text-align:right;color:var(--dim);font-weight:400}table.ext td small{display:block;color:var(--dim);font-size:13px;margin-top:2px}
+table.ext tr:last-child>*{border-bottom:0}@media (max-width:600px){table.ext th,table.ext td{padding:8px 6px}}
 dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dd small{color:var(--dim);font-weight:400}@media (max-width:600px){dd small{display:block}}dt{color:var(--dim)}dd{margin:0;font-weight:600}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media (min-width:860px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:5px solid var(--good);min-height:92px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
@@ -447,7 +452,63 @@ dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:
 .list a small{color:var(--dim)}.msg{padding:12px 14px;border-radius:10px;margin:10px 0;background:var(--line)}
 .msg.bad{background:var(--bad);color:var(--on-color)}.msg.good{background:var(--good);color:var(--on-color)}
 footer{color:var(--dim);font-size:13px;text-align:center;padding:10px 16px 24px}
+header .theme{margin-left:auto;font:inherit;font-size:13px;padding:5px 12px;border-radius:6px;cursor:pointer;background:transparent;
+color:var(--hdr-ink);border:1px solid var(--hdr-dim)}
 """
+
+# Dark = the Airbus ECAM look: black, cyan labels, green normal values, amber caution, red warning, white
+# underlined titles, square corners. Used when the device is in dark mode, or when Dark is picked (theme switch).
+ECAM = """
+:root{--bg:#000;--panel:#0b0d10;--ink:#f2f4f5;--dim:#3fd0e6;--line:#2a3036;--accent:#3fd0e6;--hdr:#000;--hdr-ink:#f2f4f5;
+--hdr-dim:#3fd0e6;--on-color:#000;--idle:#7d868f;--part:#ffad1f;--full:#3ee36a;--over:#ff3b30;--good:#3ee36a;--warn:#ffad1f;
+--bad:#ff3b30;--l-ebox:#ffad1f;--l-hot:#ff5ad9;--l-cold:#3fd0e6;--l-pi:#f2f4f5;--val:#3ee36a;--note:#a9b1b9;color-scheme:dark}
+header{border-bottom:2px solid var(--line)}
+header nav a{border-radius:3px;border:1px solid transparent}
+header nav a.on{background:transparent;color:var(--accent);border-color:var(--accent)}
+header .theme{border-radius:3px}
+h2{color:var(--ink);text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:2px}
+.panel,.card,.tile{border-radius:4px}
+.card .val,.tile .val,dd,table.ext b,td{color:var(--val)}
+.card.warn .val,.tile.warn .val,td.part{color:var(--warn)}
+.card.bad .val,.tile.alarm .val{color:var(--bad)}
+.tile.unknown .val,.tile.idle .val{color:var(--note)}
+td small,.hint,.card .note,.tile .note,.keys small,footer,table.ext td small,.you,.list a small,dd small{color:var(--note)}
+.periods a{border-radius:3px}
+.periods a.on{background:transparent;color:var(--accent);border-color:var(--accent)}
+.btn{border-radius:3px;background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn.gray{background:transparent;color:var(--note);border-color:var(--note)}
+.btn.red{background:transparent;color:var(--bad);border-color:var(--bad)}
+.strip{border-radius:2px}
+"""
+
+
+def _scoped(rules, root):
+    """ECAM's rules for one way of choosing dark: ':root' becomes root, every other selector goes under it."""
+    out = []
+    for rule in rules.strip().replace("\n", "").split("}"):
+        if rule.strip():
+            sel, body = rule.split("{", 1)
+            out.append(",".join(root if x.strip() == ":root" else f"{root} {x.strip()}" for x in sel.split(","))
+                       + "{" + body + "}")
+    return "".join(out)
+
+
+CSS += ('@media (prefers-color-scheme:dark){' + _scoped(ECAM, ':root:not([data-theme="light"])') + "}"
+        + _scoped(ECAM, ':root[data-theme="dark"]'))
+
+# Light / Dark, remembered by each phone or laptop (its own browser storage); nothing picked = the device's setting.
+THEME_HEAD = ("<script>try{var t=localStorage.getItem('moss-theme');if(t==='light'||t==='dark')"
+              "document.documentElement.dataset.theme=t}catch(e){}</script>")
+THEME_JS = """<script>
+function mossDark(){var t=document.documentElement.dataset.theme;return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches}
+function mossTheme(t){if(!t)t=mossDark()?'light':'dark';
+if(t==='auto'){delete document.documentElement.dataset.theme}else{document.documentElement.dataset.theme=t}
+try{if(t==='auto')localStorage.removeItem('moss-theme');else localStorage.setItem('moss-theme',t)}catch(e){}mossThemeShow()}
+function mossThemeShow(){var b=document.getElementById('theme');if(b)b.textContent=mossDark()?'LIGHT':'DARK';
+var c;try{c=localStorage.getItem('moss-theme')||'auto'}catch(e){c='auto'}
+document.querySelectorAll('[data-pick]').forEach(function(x){x.classList.toggle('gray',x.dataset.pick!==c)})}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',mossThemeShow);mossThemeShow();
+</script>"""
 
 
 FONT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
@@ -478,11 +539,13 @@ def page(title, body, nav=None, active="", version="", foot="", embed_fonts=Fals
     links = ""
     if nav:
         links = "<nav>" + "".join(f'<a href="{h}" class="{"on" if h == active else ""}">{n}</a>' for h, n in nav) + "</nav>"
+    switch = ('<button class="theme" id="theme" onclick="mossTheme()" title="Switch between light and dark">DARK</button>'
+              if nav else "")
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
-            f'content="width=device-width,initial-scale=1"><title>{esc(title)} - M.O.S.S.</title>'
+            f'content="width=device-width,initial-scale=1"><title>{esc(title)} - M.O.S.S.</title>{THEME_HEAD}'
             f"<style>{font_css(embed_fonts)}{CSS}</style></head><body><header><b>M.O.S.S.</b><span class='ver'>Bobcat M700</span>"
-            f'<span class="ver">{esc(version)}</span>{links}</header><main><h1>{esc(title)}</h1>{body}</main>'
-            f"<footer>{foot}</footer></body></html>")
+            f'<span class="ver">{esc(version)}</span>{links}{switch}</header><main><h1>{esc(title)}</h1>{body}</main>'
+            f"<footer>{foot}</footer>{THEME_JS}</body></html>")
 
 
 # ---------------------------------------------------------------- exports

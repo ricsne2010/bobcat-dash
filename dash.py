@@ -983,9 +983,6 @@ def journal():
         return ""
 
 
-PROBE_NAMES = {"CAB": "Cabin Temp", "OUT": "Outside Temp", "AMB": "Outside Temp"}
-
-
 def engine_status(st, hours, service, events):
     """The web page's ENGINE STATUS: (value, state, note, link), the most serious first. The link opens the
     Alarms page, or the Service page at the item (/service#engine_oil). Engine alarms count until
@@ -1057,7 +1054,7 @@ def live_status(st, readings, cfg, hours, service, pi_temp, fan, wifi, power_sta
                           "electronics box"))
         for a in temps.get("ambient", []):
             name, _, val = a.partition(" ")
-            tiles.append(tile(PROBE_NAMES.get(name.upper(), name.title() + " Temp"), val))
+            tiles.append(tile(settings.probe_label(name), val))
     if st.get("tilt"):
         tiles.append(tile("Machine Angle", st["tilt"]["text"], st["tilt"]["state"]))
     ev_states, labels = event_states(st, cfg)

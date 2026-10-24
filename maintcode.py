@@ -9,6 +9,8 @@ it's needed, the dash asks you to make one up and enter it twice. Only a salted 
 
 code_tries wrong codes in a row lock it for 5 minutes, then 10, 20, ... up to 2 hours; the count and the lock
 survive a restart. Every wrong code is also recorded in the alarm history (MAINTENANCE CODE).
+Change it: SYSTEM > MX CODE (engine off): the old code first, then the new one twice, then a last look at it.
+The recovery code doesn't change.
 Forgot it?
   1. The RECOVERY CODE (8 digits) shown once when the code was made: on the code screen, arrow the first digit
      to "?" and press OK, enter it, then make a new code (and get a new recovery code).
@@ -84,6 +86,17 @@ class MaintCode:
         self._save()
         log.info("maintenance code set")
         return recovery
+
+    def change(self, code):
+        """A new code in place of the old one (SYSTEM > MX CODE). The recovery code stays as it was, so the
+        paperwork kept with the machine still works."""
+        self.saved.update(hash=_hash(code, self.saved["salt"]), set_t=time.time(), wrong=0, locks=0)
+        self._save()
+        log.info("maintenance code changed")
+
+    def same(self, code):
+        """True if code is the current code (no try counted: only for refusing a 'new' code that's the old one)."""
+        return self.is_set() and hmac.compare_digest(_hash(code, self.saved["salt"]), self.saved["hash"])
 
     def check_recovery(self, code, wall=None):
         """The 8-digit recovery code (same lock as the code). True = OK to make a new code."""

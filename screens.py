@@ -253,7 +253,8 @@ class Screens:
                     self.modal = None
         elif k == "sysmenu":
             if b in ("left", "right"):
-                m["act"] = max(0, min(2, m["act"] + (1 if b == "right" else -1)))
+                m["act"] = max(0, min(3, m["act"] + (1 if b == "right" else -1)))
+                m.pop("msg", None)
             elif b == "back":
                 self.modal = None
             elif b == "ok" and m["act"] == 0:
@@ -262,6 +263,8 @@ class Screens:
                 settings.set_units("C" if settings.units() == "F" else "F")
             elif b == "ok" and m["act"] == 2:
                 self.modal = {"kind": "clock", "back": m, "act": 0}
+            elif b == "ok" and m["act"] == 3:
+                self._change_code(ctx, m)
         elif k == "clock":
             if b in ("left", "right"):
                 m["act"] = max(0, min(2, m.get("act", 0) + (1 if b == "right" else -1)))
@@ -365,6 +368,30 @@ class Screens:
                 self.modal = None
         elif k == "code":
             self._code_press(b, ctx)
+        elif k == "codechg":                    # "you're changing the code": OK goes on, BACK keeps the old one
+            if b == "ok":
+                self.modal = self._code_modal("new", "", None, m["back"], change=True)
+            elif b == "back":
+                self.modal = m["back"]
+        elif k == "codeshow":                   # the new code on screen: is it right? NO is selected
+            if b in ("left", "right"):
+                m["sel"] = 1 if b == "right" else 0
+            elif b == "back":
+                self.modal = m["back"]
+            elif b == "ok" and m["sel"] == 0:
+                self.modal = self._code_modal("new", "", None, m["back"], change=True)
+                self.modal["msg"] = ("Not saved. Enter the new code again.", AMBER)
+            elif b == "ok" and ctx["st"]["running"]:
+                m["back"]["msg"] = "Stop the engine first to change the maintenance code."
+                self.modal = m["back"]
+            elif b == "ok":
+                ctx["code"].change(m["new"])
+                ctx["code"].unlocked = True
+                ctx["events"].note("MAINTENANCE CODE", "warn", "changed on the dash", ctx["hours"])
+                self.modal = {"kind": "codedone", "back": m["back"]}
+        elif k == "codedone":
+            if b in ("ok", "back"):
+                self.modal = m["back"]
         elif k == "recovery":
             if b == "ok":
                 m["then"]()
@@ -387,8 +414,24 @@ class Screens:
         if code.unlocked:
             then()
             return
-        self.modal = {"kind": "code", "why": why, "then": then, "back": back,
-                      "mode": "enter" if code.is_set() else "new", "got": [], "val": 0, "first": None, "msg": None}
+        self.modal = self._code_modal("enter" if code.is_set() else "new", why, then, back)
+
+    @staticmethod
+    def _code_modal(mode, why, then, back, change=False):
+        return {"kind": "code", "why": why, "then": then, "back": back, "mode": mode, "got": [], "val": 0,
+                "first": None, "msg": None, "change": change}
+
+    def _change_code(self, ctx, menu):
+        """SYSTEM > MX CODE: the old code (always asked, even if entered already), a "you're changing it" screen,
+        the new code twice, then the new code on screen to check before it's saved. Engine off only."""
+        code = ctx["code"]
+        if ctx["st"]["running"]:
+            menu["msg"] = "Stop the engine first to change the maintenance code."
+        elif not code.is_set():                  # no code yet: making one is the same as the first time
+            self._need_code(ctx, "", lambda: setattr(self, "modal", menu), menu)
+        else:
+            self.modal = self._code_modal("enter", "to change the code", lambda: setattr(
+                self, "modal", {"kind": "codechg", "back": menu}), menu)
 
     def _code_len(self, m, code):
         return 8 if m["mode"] == "recover" else code.digits
@@ -428,12 +471,16 @@ class Screens:
         m["got"] = []
         if m["mode"] == "new":
             why = weak(entered)
+            if not why and m.get("change") and code.same(entered):
+                why = "That's the code now. Pick a different one."
             if why:
                 m["msg"] = (why, RED)
             else:
                 m["first"], m["mode"] = entered, "confirm"
         elif m["mode"] == "confirm":
-            if entered == m["first"]:
+            if entered == m["first"] and m.get("change"):
+                self.modal = {"kind": "codeshow", "new": entered, "sel": 0, "back": m["back"]}
+            elif entered == m["first"]:
                 recovery = code.set(entered)
                 code.unlocked = True
                 self.modal = {"kind": "recovery", "code": recovery, "then": m["then"]}
@@ -442,6 +489,8 @@ class Screens:
         elif m["mode"] == "recover":
             if code.check_recovery(entered):
                 ctx["events"].note("MAINTENANCE CODE", "warn", "reset with the recovery code", ctx["hours"])
+                if m["why"] == "to change the code":     # the new code is made right here: no second change after
+                    m["then"] = lambda back=m["back"]: setattr(self, "modal", back)
                 m.update(mode="new", msg=("Recovery code accepted. Make a new code.", GREEN))
             else:
                 self._wrong(m, ctx, "wrong recovery code")
@@ -463,6 +512,10 @@ class Screens:
         box = self._box(d, 800, 470, AMBER)
         title = {"enter": "MAINTENANCE CODE", "new": "MAKE A MAINTENANCE CODE", "confirm": "ENTER IT AGAIN",
                  "recover": "RECOVERY CODE"}[m["mode"]]
+        if m.get("change"):
+            title = {"new": "NEW MAINTENANCE CODE", "confirm": "NEW CODE AGAIN"}.get(m["mode"], title)
+        elif m["mode"] == "enter" and m["why"] == "to change the code":
+            title = "OLD MAINTENANCE CODE"
         d.text(title, 40, AMBER, midtop=(box.centerx, box.y + d.px(20)))
         sub = {"enter": f"{code.digits} digits, {m['why']}",
                "new": f"Pick {code.digits} digits (not all the same, not in a row)",
@@ -524,6 +577,10 @@ class Screens:
         m = self.modal
         if running and m and (m["kind"] in CLOCK_SETTING or m["kind"] == "code" and m["why"] in CLOCK_WHY):
             self.modal = self._clock_modal(m)            # the clock is set with the engine off
+        elif running and m and (m["kind"] in ("codechg", "codeshow") or m["kind"] == "code" and
+                                (m.get("change") or m["why"] == "to change the code")):
+            self.modal = m["back"]                       # the code is changed with the engine off
+            self.modal["msg"] = "Stop the engine first to change the maintenance code."
         if usb and usb.notice and not running and not self.locked and not self.modal:
             usb.notice = False
             if usb.state != usb.WAITING:
@@ -612,7 +669,7 @@ class Screens:
                           RED if usb.state == usb.FAILED else BLUE))
         code = ctx.get("code")
         if code and code.unlocked:
-            pills.append(("UNLOCKED", GREEN))
+            pills.append(("MX UNLOCKED", GREEN))
         for text, col in pills:
             t = d.font(22).render(text, True, TEXT)
             r = t.get_rect().inflate(d.px(14), d.px(8))
@@ -670,6 +727,9 @@ class Screens:
         self._draw_pills(d, ctx)
         if self.modal:
             self.draw_modal(d, ctx)
+        code = ctx.get("code")
+        if code and code.unlocked:        # maintenance code entered: a green frame round the whole screen
+            pygame.draw.rect(d.screen, GREEN, d.screen.get_rect(), width=max(3, d.px(5)))
 
     def draw_history(self, d, ctx):
         log = ctx["events"]
@@ -955,13 +1015,18 @@ class Screens:
                 self._hints(d, [("lr", "choose"), ("ok", "do it"), ("back", "close")], box.bottom - d.px(28),
                             right=box.right - d.px(24))
         elif k == "sysmenu":
-            box = self._box(d, 820, 330, TEXT)
+            box = self._box(d, 900, 330, TEXT)
             d.text("SYSTEM", 40, TEXT, midtop=(box.centerx, box.y + d.px(22)))
             notes = ["the dash's own Wi-Fi and web page", f"temperatures in °{settings.units()}: OK switches",
-                     time.strftime("%b %d %Y  %H:%M") if clock_valid() else "NOT SET"]
-            d.text(notes[m["act"]], 28, AMBER if m["act"] == 2 and not clock_valid() else DIM,
-                   midtop=(box.centerx, box.y + d.px(86)))
-            self._buttons_row(d, box, ["SERVICE WI-FI", f"UNITS  °{settings.units()}", "CLOCK"], m["act"], box.y / d.sy + 160)
+                     time.strftime("%b %d %Y  %H:%M") if clock_valid() else "NOT SET",
+                     "change the maintenance code (the old code first)"]
+            if m.get("msg"):
+                d.text(m["msg"], 28, AMBER, max_w=box.w - d.px(40), midtop=(box.centerx, box.y + d.px(86)))
+            else:
+                d.text(notes[m["act"]], 28, AMBER if m["act"] == 2 and not clock_valid() else DIM,
+                       midtop=(box.centerx, box.y + d.px(86)))
+            self._buttons_row(d, box, ["SERVICE WI-FI", f"UNITS  °{settings.units()}", "CLOCK", "MX CODE"], m["act"],
+                              box.y / d.sy + 160)
             self._hints(d, [("lr", "choose"), ("ok", "open" if m["act"] != 1 else "switch"), ("back", "close")],
                         box.bottom - d.px(32), right=box.right - d.px(24))
         elif k == "clock":
@@ -1040,6 +1105,30 @@ class Screens:
             self._draw_wifi(d, ctx)
         elif k == "code":
             self._draw_code(d, ctx)
+        elif k == "codechg":
+            box = self._box(d, 800, 400, AMBER)
+            d.text("CHANGING THE CODE", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))
+            self._wrap(d, "You are changing the maintenance code. The old code stops working as soon as the new one "
+                          "is saved. Next: enter the new code twice, then check it on the screen.", box,
+                       box.y + d.px(96), 28, TEXT, 4)
+            d.text("The recovery code stays the same.", 26, DIM, midtop=(box.centerx, box.y + d.px(260)))
+            self._hints(d, [("ok", "go on"), ("back", "keep the old code")], box.bottom - d.px(32),
+                        right=box.right - d.px(24))
+        elif k == "codeshow":
+            box = self._box(d, 800, 420, AMBER)
+            d.text("IS THIS THE NEW CODE?", 40, AMBER, midtop=(box.centerx, box.y + d.px(22)))
+            d.text("  ".join(m["new"]), 80, TEXT, midtop=(box.centerx, box.y + d.px(84)))
+            d.text("Write it down before saving. YES saves it, NO enters it again.", 26, DIM,
+                   midtop=(box.centerx, box.y + d.px(190)))
+            self._buttons_row(d, box, ["NO", "YES, SAVE IT"], m["sel"], box.y / d.sy + 250)
+            self._hints(d, [("lr", "choose"), ("ok", "save" if m["sel"] else "enter again"), ("back", "keep the old code")],
+                        box.bottom - d.px(32), right=box.right - d.px(24))
+        elif k == "codedone":
+            box = self._box(d, 760, 320, GREEN)
+            d.text("CODE CHANGED", 40, GREEN, midtop=(box.centerx, box.y + d.px(22)))
+            self._wrap(d, "The new maintenance code works from now on; the old one doesn't. The recovery code is "
+                          "unchanged.", box, box.y + d.px(96), 28, TEXT, 3)
+            self._hints(d, [("ok", "done")], box.bottom - d.px(32), right=box.right - d.px(24))
         elif k == "recovery":
             self._draw_recovery(d, ctx)
         elif k == "usb":
