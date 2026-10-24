@@ -454,6 +454,7 @@ dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:
 .list a small{color:var(--dim)}.msg{padding:12px 14px;border-radius:10px;margin:10px 0;background:var(--line)}
 .msg.bad{background:var(--bad);color:var(--on-color)}.msg.good{background:var(--good);color:var(--on-color)}
 footer{color:var(--dim);font-size:13px;text-align:center;padding:10px 16px 24px}
+.eqlist label.eq{display:block;padding:7px 0;border-bottom:1px solid var(--line)}.eqlist label.eq small{color:var(--dim);margin-left:6px}.eqlist input{transform:scale(1.25);margin-right:8px}.eqlist input:disabled+b{opacity:.45}
 header .logo{width:34px;height:34px;margin-right:-8px;flex:none}
 .about{display:flex;gap:22px;align-items:center;flex-wrap:wrap}.about img{width:150px;height:150px;flex:none}.about dl{flex:1;min-width:240px}
 header .theme{margin-left:auto;font:inherit;font-size:13px;padding:5px 12px;border-radius:6px;cursor:pointer;background:transparent;
@@ -476,7 +477,7 @@ h2{color:var(--ink);text-decoration:underline;text-underline-offset:5px;text-dec
 .card.warn .val,.tile.warn .val,td.part{color:var(--warn)}
 .card.bad .val,.tile.alarm .val{color:var(--bad)}
 .tile.unknown .val,.tile.idle .val{color:var(--note)}
-td small,.hint,.card .note,.tile .note,.keys small,footer,table.ext td small,.you,.list a small,dd small{color:var(--note)}
+td small,.hint,.card .note,.tile .note,.keys small,footer,table.ext td small,.you,.list a small,dd small,.eqlist label.eq small{color:var(--note)}
 .periods a{border-radius:3px}
 .periods a.on{background:transparent;color:var(--accent);border-color:var(--accent)}
 .btn{border-radius:3px;background:transparent;color:var(--accent);border:1px solid var(--accent)}

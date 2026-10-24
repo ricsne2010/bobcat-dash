@@ -164,3 +164,83 @@ def zone_dst(zone):
         return False
     y = datetime.date.today().year
     return datetime.datetime(y, 1, 15, 12, tzinfo=z).utcoffset() != datetime.datetime(y, 7, 15, 12, tzinfo=z).utcoffset()
+
+
+# ---------------------------------------------------------------- installed equipment (web page: Settings)
+# What's fitted on this machine, switched on / off on the web page instead of in config.toml. Saved in
+# settings.json as {"equipment": {key: true / false}} and applied over config.toml when the dash starts
+# (apply_equipment), so a change takes effect with the restart the web page does after saving.
+CHT_ADDR = (0x60, 0x65, 0x66, 0x67)          # CHT board sockets 1-4 = cylinders 1-4
+
+EQUIPMENT = [   # (key, group, label, what it is)
+    ("cht", "Engine", "Cylinder head temperatures (CHT)", "Thermocouples under the spark plugs, on the CHT board"),
+    ("cht_1", "Engine", "Cylinder 1", "MCP9601 in CHT board socket 1"),
+    ("cht_2", "Engine", "Cylinder 2", "socket 2"),
+    ("cht_3", "Engine", "Cylinder 3", "socket 3"),
+    ("cht_4", "Engine", "Cylinder 4", "socket 4"),
+    ("warn_hyd_filter", "Engine", "Hydraulic filter switch", "HYDRAULIC FILTER warning light"),
+    ("warn_hyd_temp", "Engine", "Hydraulic oil temperature switch", "HYDRAULIC OIL TEMP warning light"),
+    ("park_brake", "Machine", "Parking brake switch", "(P) BRAKE light and its reminders"),
+    ("tilt", "Machine", "Machine angle sensor", "Roll and pitch (TILT plug)"),
+    ("lights", "Machine", "Light switch sensing", "Light tell-tales and LIGHTS STILL ON"),
+    ("light_front", "Machine", "Front lights", "LIGHTS plug, FRONT"),
+    ("light_rear", "Machine", "Rear lights", "LIGHTS plug, REAR"),
+    ("light_work", "Machine", "Work light", "LIGHTS plug, WORK"),
+    ("horn", "Machine", "Alarm horn", "External 12 V horn for red alarms"),
+    ("temperature", "Electronics box", "Temperature sensors", "E-box sensor and cab / outside probes"),
+    ("fan", "Electronics box", "Pod exhaust fan", "Button pod fan, switched by the Pi"),
+]
+EQUIPMENT_KEYS = {k for k, *_ in EQUIPMENT}
+
+
+def equipment_state(cfg):
+    """{key: on / off} as the configuration stands."""
+    names = {str(c.get("name")) for c in cfg.get("cht", {}).get("cylinders", [])}
+    lights = cfg.get("lights", {})
+    out = {"cht": bool(names), "park_brake": bool(cfg.get("park_brake", {}).get("enabled")),
+           "lights": bool(lights.get("enabled"))}
+    for n in range(1, 5):
+        out[f"cht_{n}"] = str(n) in names
+    for name in ("front", "rear", "work"):
+        out[f"light_{name}"] = isinstance(lights.get(name), dict)
+    for name in ("hyd_filter", "hyd_temp"):
+        out[f"warn_{name}"] = name in cfg.get("warnings", {})
+    for sec in ("tilt", "horn", "temperature", "fan"):
+        out[sec] = bool(cfg.get(sec, {}).get("enabled", True))
+    return out
+
+
+def apply_equipment(cfg, directory):
+    """At start-up: settings.json's equipment choices over config.toml (cfg is changed in place).
+    Returns the choices applied ({} = none saved)."""
+    eq = {k: bool(v) for k, v in ((read_json(directory, FILE) or {}).get("equipment") or {}).items()
+          if k in EQUIPMENT_KEYS}
+    if not eq:
+        return {}
+    now = equipment_state(cfg)
+    on = lambda k: eq.get(k, now[k])
+    cc = cfg.setdefault("cht", {})
+    cyls = [n for n in range(1, 5) if on(f"cht_{n}")] if on("cht") else []
+    cc["cylinders"] = [{"name": str(n), "address": CHT_ADDR[n - 1]} for n in cyls]
+    cc["sim"] = bool(cyls)                       # the simulator follows the choice too
+    pb = cfg.setdefault("park_brake", {})
+    pb["enabled"] = pb["sim"] = on("park_brake")
+    lights = cfg.setdefault("lights", {})
+    lights["enabled"] = on("lights")
+    for name in ("front", "rear", "work"):
+        if not on(f"light_{name}"):
+            lights.pop(name, None)
+    for name in ("hyd_filter", "hyd_temp"):
+        if not on(f"warn_{name}"):
+            cfg.get("warnings", {}).pop(name, None)
+    for sec in ("tilt", "horn", "temperature", "fan"):
+        cfg.setdefault(sec, {})["enabled"] = on(sec)
+    log.info("installed equipment (web page): %s", ", ".join(f"{k} {'on' if v else 'off'}" for k, v in eq.items()))
+    return eq
+
+
+def save_equipment(choices):
+    """The web page's choices ({key: bool}); the dash restarts to use them. Only known keys are kept."""
+    choices = {k: bool(v) for k, v in choices.items() if k in EQUIPMENT_KEYS}
+    _save("equipment", choices)
+    return choices

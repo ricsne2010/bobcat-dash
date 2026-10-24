@@ -148,7 +148,8 @@ read_every = 5.0          # seconds between readings
 #   cylinders = [ { name = "4", address = 0x67 } ]
 # all four: [ { name = "1", address = 0x60 }, { name = "2", address = 0x65 },
 #             { name = "3", address = 0x66 }, { name = "4", address = 0x67 } ]
-cylinders = []            # none fitted yet: CHT is off (the simulator shows four)
+cylinders = []            # none fitted yet: CHT is off (the simulator shows four). Easier: the web page's
+                          # Configuration page, which overrides this (settings.json)
 warn_f = 500              # any cylinder this hot: amber CHT HIGH
 alarm_f = 550             # this hot: red, horn. The factory head switches stop the engine over 570 °F (Bobcat
                           # service manual 7A-3). M.O.S.S. never stops the engine itself.
@@ -158,7 +159,7 @@ spread_min_f = 250
 read_every = 1.0
 
 [park_brake]              # parking brake switch on the handle, closed = set (breakout board rev 3.0 PARK BRAKE)
-enabled = false           # true once the switch is fitted (the simulator always shows it)
+enabled = false           # true once the switch is fitted, or the web page's Configuration page
 gpio = 9                  # Pi pin 21, through the board's optocoupler: low = brake set
 drive_s = 5.0             # set while the engine works above idle this long: PARKING BRAKE ON
 # drive_rpm = 1400        # "above idle" (default: idle_rpm + 400)

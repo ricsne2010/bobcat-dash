@@ -15,7 +15,7 @@ OK, WARN = "ok", "warn"
 class BrakeStatus:
     def __init__(self, cfg, sim=False):
         bc = cfg.get("park_brake", {})
-        self.enabled = bc.get("enabled", False) or sim
+        self.enabled = bc.get("enabled", False) or (sim and bc.get("sim", True))
         self.drive_rpm = bc.get("drive_rpm", cfg.get("tach", {}).get("idle_rpm", 1000) + 400)
         self.drive_s = bc.get("drive_s", 5.0)
         self.since = None

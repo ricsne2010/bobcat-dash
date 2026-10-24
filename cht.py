@@ -24,7 +24,7 @@ import settings
 log = logging.getLogger("cht")
 
 OK, WARN, ALARM, UNKNOWN = "ok", "warn", "alarm", "unknown"
-SOCKET_ADDR = (0x60, 0x65, 0x66, 0x67)      # CHT board sockets 1-4 (cylinders 1-4)
+SOCKET_ADDR = settings.CHT_ADDR             # CHT board sockets 1-4 (cylinders 1-4)
 
 # MCP9601 registers (Microchip DS20006350). Checked against the datasheet when the first board is built.
 REG_HOT = 0x00          # hot-junction temperature, 16 bits signed, 0.0625 °C per bit

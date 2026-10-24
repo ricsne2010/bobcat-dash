@@ -262,7 +262,7 @@ BOBCAT   E-BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING          
 
 A Type K thermocouple under each spark plug, read by an MCP9601 thermocouple amplifier on the **CHT board**
 (rev 3.0), which plugs into the breakout board's **CHT (I2C)** connector. Fit one to four: list the ones fitted in
-`[cht] cylinders` (the module in CHT-board socket 1-4 answers at 0x60, 0x65, 0x66, 0x67). Until then CHT is off.
+the web page's **Configuration** page (or `[cht] cylinders`: the module in CHT-board socket 1-4 answers at 0x60, 0x65, 0x66, 0x67). Until then CHT is off.
 
 - **Sensor:** The Sensor Connection **CHT-FS-072-06-18-K-MP** (flexible stem, rated to 1000 °C, *ungrounded*
   junction, 18 mm ring for the VH4D's plugs, male mini K plug). 120 in lead and custom lengths are available.
@@ -282,7 +282,7 @@ A Type K thermocouple under each spark plug, read by an MCP9601 thermocouple amp
 ## Parking brake
 
 A sealed switch on the parking brake handle, closed when the brake is set, to the breakout board's
-**PARK BRAKE** plug (rev 3.0, GPIO 9). Turn it on with `[park_brake] enabled = true` once it's fitted.
+**PARK BRAKE** plug (on the CHT + Parking Brake board, GPIO 9). Turn it on once it's fitted: the web page's **Configuration** page (or `[park_brake] enabled = true`).
 
 - **(P) BRAKE** (red) in the header while the brake is set.
 - **PARKING BRAKE ON** (amber, flashing (P)): the brake is set while the engine works above idle for 5 s.
@@ -862,6 +862,7 @@ the alarm history.
 | **Reports** | The Alarms card opens the alarm list. For 7 days, 30 days, 12 months or all time: engine time split into **full throttle** (normal working), **idle** (warm-up, cool-down), **part throttle** (for warming a cold engine, pump priming or setting timing: flagged amber above 10 %) and **overspeed**, time at each engine speed, engine time by day, key-on time vs engine time, starts and cranks that didn't start, **hot shutdowns** (shut off before the cool-down finished), alarms by type, temperature and battery charts by day, **extremes** (lowest and highest of each sensor: E-box, each probe such as cabin and outside, Pi CPU, battery while running, with the date and time), and a day-by-day table (10 days a page by default, or 20 / 50 / 100; Newer / Older). |
 | **Alarms** | The history list and the archive. |
 | **Service** | Each item: interval, last done, hours left, the job; everything marked done. |
+| **Configuration** | **Installed equipment:** a switch for each optional part, so nothing that isn't fitted is read, shown or alarmed on: cylinder head temperatures (and each cylinder 1-4), the hydraulic filter and oil temperature switches, the parking brake switch, the machine angle sensor, light sensing (and each light), the alarm horn, the temperature sensors and the pod fan. Saving needs the engine stopped and the maintenance code, is logged in the alarm history, and restarts the dash (about 15 s). The choices are kept in `settings.json` over `config.toml`. |
 | **Settings** | **Look of these pages:** Same as this device / Light / **Dark (ECAM)**, an Airbus ECAM-style dark page (cyan labels, green normal values, amber caution, red warning); remembered by each phone or laptop, also the LIGHT / DARK button at the top of every page. **Temperature units** (°F / °C, also on the dash: SYSTEM > OK > UNITS). **Clock:** the dash's time beside this phone's or laptop's, the difference, **Sync to this device** (copies the time and time zone, however far off the dash is) and **Set by hand** (a date and time picker); both need the maintenance code and save the time in the Pi 5's RTC. **Time zone** (Arizona, Pacific, Mountain, Central, Eastern, Alaska, Hawaii, UTC, or this device's): **daylight saving comes with it**, so the clock moves in March and November by itself in zones that use it, and never in Arizona. Sync sets the zone from the phone too. |
 | **Downloads** | Everything as one zip, or each file: `report.html`, CSV files (open in Excel), settings, the dash's data (a backup) and log. |
 | **Software** | **About**: the patch, M.O.S.S., the machine, software version, board revision, computer, source. Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |

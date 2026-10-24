@@ -1202,6 +1202,7 @@ def main():
     log.info("M.O.S.S. (Maintenance, Operations, and Service System) %s (built %s)", VERSION, BUILD_DATE)
     if args.boot_splash:
         raise SystemExit(save_boot_splash(cfg, here, args.boot_splash))
+    settings.apply_equipment(cfg, data_dir(cfg, args.sim))     # what's fitted, chosen on the web page
 
     d = cfg["display"]
     pygame.mixer.pre_init(44100, -16, 1, 1024)
@@ -1404,6 +1405,9 @@ def main():
             temp_snap = readings.get("temps") if args.sim else (temp_sensors.snapshot() if temp_sensors else None)
             st["temps"] = temp_status.update(temp_snap)
             cht_snap = readings.get("cht") if args.sim else (cht_sensors.snapshot() if cht_sensors else None)
+            fitted = {str(c.get("name")) for c in cfg.get("cht", {}).get("cylinders", [])}
+            if args.sim and cht_snap and fitted:                 # the simulator shows the fitted cylinders only
+                cht_snap = [(n, t) for n, t in cht_snap if n in fitted]
             st["cht"] = cht_status.update(cht_snap, st["running"] and not st["tach_fault"], now)
             if st["cht"]:
                 st["cht"]["detail"] = cht_status.detail(st["cht"])

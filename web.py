@@ -4,6 +4,8 @@
   /reports     Performance reports: engine time by throttle band, rpm, starts, hot shutdowns, temperatures
   /alarms      Alarm history (the list on the dash) and the archive
   /service     Service items, when they were last done, what's due
+  /settings    Units, clock, time zone, the look of these pages
+  /configuration  Installed equipment: switch optional sensors / features on or off (code, restarts the dash)
   /downloads   Everything as one zip, or one file at a time (CSV opens in Excel)
   /software    Upload an update zip, check it, install it; go back to the previous version; restart
 
@@ -30,7 +32,7 @@ from version import BOARD_REV, SOURCE
 log = logging.getLogger("web")
 esc = html.escape
 NAV = [("/", "Status"), ("/reports", "Reports"), ("/alarms", "Alarms"), ("/service", "Service"), ("/settings", "Settings"),
-       ("/downloads", "Downloads"), ("/software", "Software")]
+       ("/configuration", "Configuration"), ("/downloads", "Downloads"), ("/software", "Software")]
 UPLOAD = "update-upload.zip"
 MAX_UPLOAD = 60 * 1024 * 1024
 
@@ -117,6 +119,19 @@ def device_of(ua):
     return " · ".join(x for x in (dev, br) if x) or "unknown device"
 
 
+EQUIPMENT_JS = """<script>
+function eqsync(){document.querySelectorAll('input[data-has-subs]').forEach(m=>{
+document.querySelectorAll('input[data-master="'+m.name+'"]').forEach(x=>{x.disabled=!m.checked;});});}
+document.querySelectorAll('input[data-has-subs]').forEach(m=>m.addEventListener('change',eqsync));eqsync();
+async function saveeq(){const m=document.getElementById('me'),c=document.getElementById('code4');
+if(!/^[0-9]+$/.test(c.value)){m.className='msg bad';m.textContent='Enter the maintenance code first.';c.focus();return;}
+const ch={};document.querySelectorAll('.eqlist input[type=checkbox]').forEach(x=>{ch[x.name]=x.checked;});
+m.className='msg';m.textContent='Saving ...';
+const r=await fetch('/settings/equipment',{method:'POST',headers:{'X-Bobcat':'1','X-Code':c.value,
+'Content-Type':'application/json'},body:JSON.stringify(ch)});c.value='';
+m.className='msg '+(r.ok?'good':'bad');m.textContent=await r.text();if(r.ok){setTimeout(()=>location.reload(),15000);}}
+</script>"""
+
 CODE_FIELD = ('<p><label>Maintenance code <input type="password" id="{id}" inputmode="numeric" pattern="[0-9]*" '
               'maxlength="8" autocomplete="off" size="8" style="font:inherit;padding:8px;border-radius:8px;'
               'border:1px solid var(--line);background:var(--panel);color:var(--ink);margin-left:6px"></label></p>')
@@ -165,7 +180,7 @@ class Handler(BaseHTTPRequestHandler):
         q = parse_qs(url.query)
         route = {"/": self.status, "/api/status": self.api_status, "/reports": self.reports, "/alarms": self.alarms,
                  "/service": self.service, "/downloads": self.downloads, "/software": self.software,
-                 "/settings": self.settings_page, "/api/time": self.api_time}.get(url.path)
+                 "/settings": self.settings_page, "/configuration": self.configuration, "/api/time": self.api_time}.get(url.path)
         try:
             if route:
                 route(q)
@@ -200,6 +215,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(f"Clock now {settings.clock_fmt()[:2]}-hour on the dash and here.", "text/plain; charset=utf-8")
             elif path == "/settings/clock":
                 self.set_clock()
+            elif path == "/settings/equipment":
+                self.set_equipment()
             elif path == "/wifi-extend":
                 self.ctx["wifi_extend"]()
                 self._send("Extended. " + self.ctx["wifi_text"](), "text/plain; charset=utf-8")
@@ -384,8 +401,65 @@ class Handler(BaseHTTPRequestHandler):
                 '<b>Sync</b> copies this phone\'s or laptop\'s time and time zone to the dash, however far off the '
                 'dash is. <b>Set by hand</b> is for when this device\'s clock can\'t be trusted. Both save the time in the '
                 'Pi 5\'s battery-backed clock (if its RTC battery is fitted) and need the maintenance code and the engine stopped: every record is '
-                'dated by this clock. The dash can also be set from its own buttons: SYSTEM &gt; CLOCK.</p></section>' + SETTINGS_JS)
+                'dated by this clock. The dash can also be set from its own buttons: SYSTEM &gt; CLOCK.</p></section>'
+                + SETTINGS_JS)
         self._page("Settings", body, "/settings")
+
+    def configuration(self, q):
+        self._page("Configuration", self.equipment_section() + EQUIPMENT_JS, "/configuration")
+
+    def equipment_section(self):
+        """Installed equipment: a switch for each optional sensor / feature (settings.EQUIPMENT)."""
+        state = settings.equipment_state(self.ctx["cfg"])
+        running = self.ctx["live"]().get("running")
+        subs = {"cht": [f"cht_{n}" for n in range(1, 5)], "lights": ["light_front", "light_rear", "light_work"]}
+        sub_of = {k: m for m, ks in subs.items() for k in ks}
+        rows, group = [], None
+        for key, grp, label, note in settings.EQUIPMENT:
+            if grp != group:
+                rows.append(f'<h3>{esc(grp)}</h3>')
+                group = grp
+            pad = ' style="margin-left:28px"' if key in sub_of else ""
+            data = f' data-master="{sub_of[key]}"' if key in sub_of else (' data-has-subs="1"' if key in subs else "")
+            rows.append(f'<label class="eq"{pad}><input type="checkbox" name="{key}"{data}'
+                        f'{" checked" if state[key] else ""}> <b>{esc(label)}</b> <small>{esc(note)}</small></label>')
+        warn = ('<p class="msg bad">The engine is running: stop it to change the installed equipment.</p>'
+                if running else "")
+        return ('<section class="panel"><h2>Installed equipment</h2>' + warn +
+                '<p class="hint">What\'s fitted on this machine. Something switched off isn\'t read, shown or alarmed '
+                'on; switch it on once it\'s fitted (and wired to the board). Saving needs the maintenance code and '
+                'restarts the dash (about 15 s).</p><div class="eqlist">' + "".join(rows) + '</div>'
+                + CODE_FIELD.format(id="code4") +
+                f'<button class="btn" onclick="saveeq()"{" disabled" if running else ""}>Save and restart dash</button>'
+                '<div id="me"></div></section>')
+
+    def set_equipment(self):
+        c = self.ctx
+        if c["live"]().get("running"):                     # asked before the code, so no try is used up
+            self._send("The engine is running: stop it first.", "text/plain", 409)
+            return
+        if not self._code_ok():
+            return
+        try:
+            n = int(self.headers.get("Content-Length", "0"))
+            choices = json.loads(self.rfile.read(n).decode()) if 0 < n <= 4096 else None
+        except (ValueError, UnicodeDecodeError):
+            choices = None
+        if not isinstance(choices, dict):
+            self._send("Nothing to save.", "text/plain", 400)
+            return
+        before = settings.equipment_state(c["cfg"])
+        saved = settings.save_equipment(choices)
+        changed = [k for k, v in saved.items() if before.get(k) != v]
+        labels = {k: lab for k, _, lab, _ in settings.EQUIPMENT}
+        if changed:
+            c["events"].note("SETTINGS", "warn", "equipment: " + ", ".join(
+                f"{labels[k]} {'on' if saved[k] else 'off'}" for k in changed) +
+                f" ({device_of(self.headers.get('User-Agent'))})", c["hours"]())
+        self._send(("Saved: " + ", ".join(f"{labels[k]} {'on' if saved[k] else 'off'}" for k in changed) + ". "
+                    if changed else "Saved (nothing changed). ") + "The dash is restarting: this page reloads in 15 s.",
+                   "text/plain; charset=utf-8")
+        c["restart"]()
 
     def set_clock(self):
         c = self.ctx
