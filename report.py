@@ -1,0 +1,456 @@
+"""Reports and exports, shared by the service web page and the USB stick copy.
+
+Everything here only reads: the usage log (usage.py), the alarm history (events.py), the service records
+(service.py). The HTML is self-contained (no internet on the dash's own Wi-Fi): inline CSS and SVG charts,
+so the report.html copied to a USB stick opens on any computer.
+"""
+import csv
+import datetime
+import html
+import io
+import json
+import os
+import time
+import zipfile
+
+from service import clock_valid
+
+PERIODS = (("7", "7 days"), ("30", "30 days"), ("365", "12 months"), ("all", "All time"))
+# The VH4D works at full throttle (the governor holds the speed); idle is for warm-up and cool-down. Part throttle is
+# for warming a cold engine, pump priming or setting the timing, so a lot of time there is flagged.
+BAND_COLORS = {"idle_s": "var(--idle)", "work_s": "var(--part)", "full_s": "var(--full)", "over_s": "var(--over)"}
+BAND_NAMES = {"idle_s": "Idle", "work_s": "Part throttle", "full_s": "Full throttle", "over_s": "Overspeed"}
+PART_WARN = 0.10          # part throttle above this share of engine time: amber card
+SUMS = ("key_s", "run_s", "idle_s", "work_s", "full_s", "over_s", "crank_s", "starts", "cranks", "stops", "hot_stops")
+esc = html.escape
+
+
+# ---------------------------------------------------------------- numbers
+
+def hm(s):
+    """Seconds -> '12 h 05 min' / '35 min'."""
+    m = int(round((s or 0) / 60))
+    return f"{m // 60} h {m % 60:02d} min" if m >= 60 else f"{m} min"
+
+
+def pct(a, b):
+    return f"{100 * a / b:.0f} %" if b else "-"
+
+
+def temp(c, units):
+    if c is None:
+        return "-"
+    return f"{c * 9 / 5 + 32:.0f} °F" if units == "F" else f"{c:.0f} °C"
+
+
+def day_of(t):
+    return time.strftime("%Y-%m-%d", time.localtime(t)) if t and clock_valid(t) else "no-date"
+
+
+def select(days, period, today=None):
+    """The day keys in the period, oldest first ('no-date' only in All time)."""
+    if period == "all":
+        return sorted(days)
+    today = today or datetime.date.today()
+    first = (today - datetime.timedelta(days=int(period) - 1)).isoformat()
+    return sorted(k for k in days if k != "no-date" and first <= k <= today.isoformat())
+
+
+def total(recs):
+    t = {k: 0 for k in SUMS}
+    t["hist"] = {}
+    for r in recs:
+        for k in SUMS:
+            t[k] += r.get(k, 0)
+        for b, s in r.get("hist", {}).items():
+            t["hist"][b] = t["hist"].get(b, 0) + s
+        for k, f in (("box_max", max), ("amb_max", max), ("amb_min", min), ("pi_max", max),
+                     ("v_run_min", min), ("v_run_max", max)):
+            if r.get(k) is not None:
+                t[k] = f(t[k], r[k]) if k in t else r[k]
+    return t
+
+
+def buckets(days, period, today=None):
+    """[(label, totals)] for the bar chart: every day for 7 / 30 days, months for longer."""
+    today = today or datetime.date.today()
+    if period in ("7", "30"):
+        n = int(period)
+        out = []
+        for i in range(n - 1, -1, -1):
+            d = today - datetime.timedelta(days=i)
+            out.append((d.strftime("%a %d" if n <= 7 else "%d"), total([days.get(d.isoformat(), {})])))
+        return out
+    keys = [k for k in select(days, period, today) if k != "no-date"]
+    if not keys:
+        return []
+    months = {}
+    for k in keys:
+        months.setdefault(k[:7], []).append(days[k])
+    y, m = map(int, keys[0][:7].split("-"))
+    out = []
+    while (y, m) <= (today.year, today.month):
+        key = f"{y:04d}-{m:02d}"
+        out.append((datetime.date(y, m, 1).strftime("%b %y"), total(months.get(key, []))))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
+
+
+# ---------------------------------------------------------------- charts (inline SVG)
+
+def svg_bars(rows, unit_h=True):
+    """Stacked bars of engine time per bucket (idle / working / full / overspeed)."""
+    W, H, L, B = 760, 260, 44, 28
+    peak = max([sum(t[k] for k in BAND_COLORS) for _, t in rows] + [1]) / 3600
+    step = 1 if peak <= 6 else 2 if peak <= 12 else 5 if peak <= 30 else 10 if peak <= 60 else 50
+    top = max(step, (int(peak / step) + 1) * step)
+    n = max(len(rows), 1)
+    bw = (W - L - 10) / n
+    parts = [f'<svg viewBox="0 0 {W} {H}" class="chart" role="img" aria-label="Engine hours by throttle band">']
+    for v in range(0, int(top) + 1, step):
+        y = H - B - (H - B - 10) * v / top
+        parts.append(f'<line x1="{L}" x2="{W - 6}" y1="{y:.1f}" y2="{y:.1f}" class="grid"/>'
+                     f'<text x="{L - 6}" y="{y + 4:.1f}" class="ax" text-anchor="end">{v} h</text>')
+    every = max(1, n // 16)
+    for i, (label, t) in enumerate(rows):
+        x = L + i * bw + bw * 0.15
+        y = H - B
+        tip = [label] + [f"{BAND_NAMES[k]} {hm(t[k])}" for k in BAND_COLORS if t[k]]
+        parts.append(f'<g><title>{esc(" | ".join(tip))}</title>')
+        for k, col in BAND_COLORS.items():
+            h = (H - B - 10) * t[k] / 3600 / top
+            if h > 0:
+                y -= h
+                parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bw * 0.7:.1f}" height="{h:.1f}" fill="{col}"/>')
+        parts.append("</g>")
+        if i % every == 0:
+            parts.append(f'<text x="{x + bw * 0.35:.1f}" y="{H - 8}" class="ax" text-anchor="middle">{esc(label)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def svg_hist(hist, bands, max_rpm=3500):
+    """Time spent at each engine speed, coloured by band."""
+    W, H, L, B = 760, 220, 44, 28
+    size = bands.get("bin", 250)
+    bins = list(range(0, int(max_rpm) + size, size))
+    vals = [hist.get(str(b), 0) / 3600 for b in bins]
+    peak = max(vals + [0.01])
+    bw = (W - L - 10) / len(bins)
+    parts = [f'<svg viewBox="0 0 {W} {H}" class="chart" role="img" aria-label="Time at each engine speed">']
+    for frac in (0.5, 1.0):
+        y = H - B - (H - B - 10) * frac
+        parts.append(f'<line x1="{L}" x2="{W - 6}" y1="{y:.1f}" y2="{y:.1f}" class="grid"/>'
+                     f'<text x="{L - 6}" y="{y + 4:.1f}" class="ax" text-anchor="end">{peak * frac:.1f} h</text>')
+    for i, (b, v) in enumerate(zip(bins, vals)):
+        mid = b + size / 2
+        k = "over_s" if mid > bands.get("over_at", 3050) else "full_s" if b >= bands.get("full_at", 2600) else \
+            "work_s" if b >= bands.get("idle_below", 1400) else "idle_s"
+        h = (H - B - 10) * v / peak
+        x = L + i * bw
+        parts.append(f'<g><title>{b}-{b + size - 1} rpm: {hm(v * 3600)}</title>'
+                     f'<rect x="{x + 1:.1f}" y="{H - B - h:.1f}" width="{bw - 2:.1f}" height="{max(h, 0):.1f}" fill="{BAND_COLORS[k]}"/></g>')
+        if b % 500 == 0:
+            parts.append(f'<text x="{x:.1f}" y="{H - 8}" class="ax" text-anchor="middle">{b}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def band_strip(t):
+    """One long bar split by band, with the percentages under it."""
+    run = sum(t[k] for k in BAND_COLORS) or 1
+    segs = "".join(f'<span style="flex:{t[k] / run:.4f};background:{c}" title="{BAND_NAMES[k]}"></span>'
+                   for k, c in BAND_COLORS.items() if t[k])
+    keys = "".join(f'<li><i style="background:{c}"></i>{BAND_NAMES[k]} <b>{pct(t[k], run)}</b> '
+                   f'<small>{hm(t[k])}</small></li>' for k, c in BAND_COLORS.items())
+    return f'<div class="strip">{segs or "<span style=flex:1></span>"}</div><ul class="keys">{keys}</ul>'
+
+
+# ---------------------------------------------------------------- the report page
+
+def card(label, value, note="", tone="", href=None):
+    tag = f'a href="{href}"' if href else "div"
+    return (f'<{tag} class="card {tone}{" link" if href else ""}"><div class="lbl">{esc(label)}</div>'
+            f'<div class="val">{value}</div><div class="note">{note}</div></{tag.split()[0]}>')
+
+
+PER_PAGE = 10
+PAGE_SIZES = (10, 20, 50, 100)
+# Day-by-day paging in the browser: Newer / Older and the page size swap rows in place, and the page scrolls by
+# however much the table grew or shrank, so the button you pressed stays under your finger.
+DAYS_JS = """<script>(function(){document.querySelectorAll('section.days:not([data-ok])').forEach(function(sec){
+sec.dataset.ok=1;var rows=[].slice.call(sec.querySelectorAll('tr.dr')),size=10,page=0;
+try{size=+localStorage.getItem('bobcatDaysPerPage')||10}catch(e){}
+function draw(){var pages=Math.max(1,Math.ceil(rows.length/size));page=Math.min(page,pages-1);
+rows.forEach(function(r,i){r.hidden=!(i>=page*size&&i<(page+1)*size)});
+sec.querySelectorAll('.pg-info').forEach(function(e){e.textContent='Page '+(page+1)+' of '+pages+' \u00b7 '+rows.length+' days'});
+sec.querySelectorAll('[data-go=newer]').forEach(function(b){b.disabled=page==0});
+sec.querySelectorAll('[data-go=older]').forEach(function(b){b.disabled=page>=pages-1});
+sec.querySelectorAll('select').forEach(function(s){s.value=size})}
+function keep(el,fn){var y=el.getBoundingClientRect().top;fn();window.scrollBy(0,el.getBoundingClientRect().top-y)}
+sec.addEventListener('click',function(e){var b=e.target.closest('[data-go]');if(!b||b.disabled)return;
+keep(b,function(){page+=b.dataset.go=='older'?1:-1;draw()})});
+sec.addEventListener('change',function(e){var s=e.target;if(s.tagName!='SELECT')return;keep(s,function(){
+var first=page*size;size=+s.value;page=Math.floor(first/size);try{localStorage.setItem('bobcatDaysPerPage',size)}catch(x){}draw()})});
+draw()})})();</script>"""
+
+
+def report_body(days, bands, events, period, units="F", today=None, max_rpm=3500, links=True, page=1):
+    keys = select(days, period, today)
+    t = total([days[k] for k in keys])
+    if period == "all":
+        evs = list(events)
+    else:
+        today = today or datetime.date.today()
+        first = (today - datetime.timedelta(days=int(period) - 1)).isoformat()
+        evs = [e for e in events if first <= day_of(e.get("t")) <= today.isoformat()]
+    alarms = sum(1 for e in evs if e.get("level") == "alarm")
+    warns = len(evs) - alarms
+    used = [k for k in keys if days[k].get("run_s", 0) > 60 and k != "no-date"]
+    failed = max(0, t["cranks"] - t["starts"])
+    out = []
+    if links:
+        out.append('<nav class="periods">' + "".join(
+            f'<a href="?p={p}" class="{"on" if p == period else ""}">{n}</a>' for p, n in PERIODS) + "</nav>")
+    if not keys or not t["key_s"]:
+        out.append('<p class="empty">Nothing recorded in this period yet. The dash records usage while the key is on.</p>')
+        return "".join(out)
+    hours = (f'{days[keys[-1]].get("h1", 0) - days[keys[0]].get("h0", 0):.1f} on the meter'
+             if days[keys[0]].get("h0") is not None and days[keys[-1]].get("h1") is not None else "")
+    out.append('<section class="cards">')
+    run = t["run_s"] or 1
+    out.append(card("Engine running", hm(t["run_s"]), (hours + ", " if hours else "") + f'key on {hm(t["key_s"])}'))
+    out.append(card("Full throttle", pct(t["full_s"] + t["over_s"], t["run_s"]),
+                    f'{hm(t["full_s"] + t["over_s"])}: normal working', "good"))
+    out.append(card("Part throttle", pct(t["work_s"], t["run_s"]),
+                    f'{hm(t["work_s"])}: cold warm-up, pump priming, timing',
+                    "warn" if t["work_s"] / run > PART_WARN else ""))
+    out.append(card("Idle", pct(t["idle_s"], t["run_s"]),
+                    f'{hm(t["idle_s"])} below {bands["idle_below"]} rpm: warm-up, cool-down',
+                    "warn" if t["idle_s"] / run > 0.4 else ""))
+    out.append(card("Days used", str(len(used)), f'avg {hm(t["run_s"] / len(used))} a day' if used else ""))
+    out.append(card("Starts", str(t["starts"]),
+                    f'{failed} crank{"s" if failed != 1 else ""} that didn\'t start, {t["crank_s"]:.0f} s on the starter',
+                    "warn" if failed > max(2, t["starts"] // 4) else ""))
+    out.append(card("Hot shutdowns", str(t["hot_stops"]), f'of {t["stops"]} stops: shut off before the cool-down finished',
+                    "warn" if t["hot_stops"] else "good" if t["stops"] else ""))
+    out.append(card("Alarms", str(alarms), f"{warns} warnings" + (" - see the list" if links else ""),
+                    "bad" if alarms else "good", href="/alarms?all=1" if links else None))
+    out.append("</section>")
+    out.append('<section class="panel"><h2>Throttle use</h2>' + band_strip(t) +
+               '<p class="hint">Work at full throttle: the governor holds the speed. Idle to warm up and cool down. '
+               'Part throttle only to warm a cold engine, prime the pump or set the timing.</p></section>')
+    rows = buckets(days, period, today)
+    if rows:
+        out.append(f'<section class="panel"><h2>Engine time by {"day" if period in ("7", "30") else "month"}</h2>'
+                   + svg_bars(rows) + "</section>")
+    out.append('<section class="panel"><h2>Time at each engine speed (rpm)</h2>' + svg_hist(t["hist"], bands, max_rpm)
+               + f'<p class="hint">Idle below {bands["idle_below"]} rpm, part throttle up to {bands["full_at"]} rpm, full throttle from there, '
+               f'overspeed above {bands["over_at"]} rpm (settings: [usage] and [tach] in config.toml).</p></section>')
+    extremes = [("Hottest E-box", temp(t.get("box_max"), units)), ("Hottest outside", temp(t.get("amb_max"), units)),
+                ("Coldest outside", temp(t.get("amb_min"), units)), ("Hottest Pi CPU", temp(t.get("pi_max"), "C")),
+                ("Battery while running", f'{t["v_run_min"]:.1f} - {t["v_run_max"]:.1f} V' if "v_run_min" in t else "-")]
+    out.append('<section class="panel"><h2>Extremes</h2><dl class="pairs">' +
+               "".join(f"<dt>{a}</dt><dd>{b}</dd>" for a, b in extremes) + "</dl></section>")
+    top = {}
+    for e in evs:
+        top.setdefault(e["what"], [0, 0])[0 if e.get("level") == "alarm" else 1] += 1
+    if top:
+        out.append('<section class="panel"><h2>Alarms and warnings</h2><table><tr><th>What</th><th>Alarms</th>'
+                   '<th>Warnings</th></tr>' + "".join(
+                       f"<tr><td>{esc(w)}</td><td>{a}</td><td>{n}</td></tr>"
+                       for w, (a, n) in sorted(top.items(), key=lambda x: (-x[1][0], -x[1][1]))) + "</table></section>")
+    shown = [k for k in reversed(keys) if days[k].get("key_s")]
+    pager = ""
+    paged = links and len(shown) > min(PAGE_SIZES)
+    if paged:      # paged in the browser (DAYS_JS): no reload, the screen doesn't move
+        opts = "".join(f'<option value="{n}"{" selected" if n == PER_PAGE else ""}>{n}</option>' for n in PAGE_SIZES)
+        pager = ('<div class="pager"><button class="btn gray" type="button" data-go="newer">&larr; Newer</button>'
+                 f'<span class="pg-info">{len(shown)} days</span>'
+                 f'<label>Show <select aria-label="Days per page">{opts}</select> a page</label>'
+                 '<button class="btn gray" type="button" data-go="older">Older &rarr;</button></div>')
+    out.append('<section class="panel days" id="days"><h2>Day by day</h2>' + pager + '<div class="scroll"><table><tr><th>Day</th><th>Engine</th>'
+               '<th>Full</th><th>Part</th><th>Idle</th><th>Key on</th><th>Starts</th><th>Hot stops</th>'
+               '<th>E-box max</th><th>Outside</th><th>Meter</th></tr>')
+    for i, k in enumerate(shown):
+        r = days[k]
+        meter = f'{r["h1"]:.1f} h' if r.get("h1") is not None else ""
+        outside = f'{temp(r.get("amb_min"), units)} - {temp(r.get("amb_max"), units)}' if r.get("amb_max") is not None else "-"
+        tr = '<tr class="dr"' + (" hidden" if paged and i >= PER_PAGE else "") + ">"
+        out.append(f'{tr}<td>{k}</td><td>{hm(r.get("run_s"))}</td>'
+                   f'<td>{pct(r.get("full_s", 0) + r.get("over_s", 0), r.get("run_s"))}</td>'
+                   f'<td{" class=part" if r.get("run_s") and r.get("work_s", 0) / r["run_s"] > PART_WARN else ""}>'
+                   f'{pct(r.get("work_s", 0), r.get("run_s"))}</td>'
+                   f'<td>{pct(r.get("idle_s", 0), r.get("run_s"))}</td><td>{hm(r.get("key_s"))}</td>'
+                   f'<td>{r.get("starts", 0)}</td><td>{r.get("hot_stops", 0)}</td><td>{temp(r.get("box_max"), units)}</td>'
+                   f'<td>{outside}</td><td>{meter}</td></tr>')
+    out.append("</table></div>" + pager + "</section>" + (DAYS_JS if paged else ""))
+    return "".join(out)
+
+
+CSS = """
+:root{--bg:#f3f4f6;--panel:#fff;--ink:#14181f;--dim:#5b6472;--line:#dde1e7;--accent:#1f6feb;--hdr:#0b0e13;--hdr-ink:#eceff4;
+--hdr-dim:#98a2b1;--on-color:#fff;--idle:#8b95a5;--part:#d99a00;--full:#2f9e5b;--over:#d93a3a;--good:#2f9e5b;--warn:#c27c00;
+--bad:#d93a3a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;
+--line:#2a313c;--accent:#5b9dff;--hdr:#000;--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--over:#ef4444;--good:#34c46e;
+--warn:#f5a623;--bad:#ef4444;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b0e13;--panel:#161b23;--ink:#eceff4;--dim:#98a2b1;--line:#2a313c;--accent:#5b9dff;--hdr:#000;
+--idle:#6f7a8b;--part:#f5b21f;--full:#34c46e;--over:#ef4444;--good:#34c46e;--warn:#f5a623;--bad:#ef4444;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--hdr);color:var(--hdr-ink);padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));
+display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+header b{font-size:18px;letter-spacing:.06em}header .ver{color:var(--hdr-dim);font-size:14px}
+header nav{display:flex;gap:4px;flex-wrap:wrap}header nav a{color:var(--hdr-dim);text-decoration:none;padding:6px 12px;border-radius:8px}
+header nav a.on{background:var(--hdr-ink);color:var(--hdr)}
+main{max-width:1100px;margin:0 auto;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:24px;margin:8px 0 14px;text-wrap:balance}h2{font-size:15px;margin:0 0 12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 14px}@media (min-width:700px){.cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-left:5px solid var(--line);min-width:0;min-height:118px;display:flex;flex-direction:column}
+.card .lbl{color:var(--dim);font-size:14px}.card .val{font-size:clamp(20px,6vw,26px);font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card .note{margin-top:auto}.card .note{color:var(--dim);font-size:13px}
+a.card.link{color:var(--ink);text-decoration:none}a.card.link:hover{border-color:var(--accent)}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;color:var(--dim);flex-wrap:wrap}.pager select{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}html{overflow-anchor:none}
+.card.good{border-left-color:var(--good)}.card.warn{border-left-color:var(--warn)}.card.bad{border-left-color:var(--bad)}
+.periods{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.periods a{padding:7px 14px;border:1px solid var(--line);border-radius:20px;color:var(--ink);text-decoration:none;background:var(--panel)}
+.periods a.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.strip{display:flex;height:28px;border-radius:8px;overflow:hidden;background:var(--line)}
+.keys{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-wrap:wrap;gap:6px 22px}.keys i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px}
+.keys small{color:var(--dim)}
+.chart{width:100%;height:auto;display:block}.chart .grid{stroke:var(--line)}.chart .ax{fill:var(--dim);font-size:12px}
+td.part{color:var(--warn);font-weight:700}.hint{color:var(--dim);font-size:13px;margin:8px 0 0}.empty{color:var(--dim);font-size:18px;padding:30px 0}
+table{border-collapse:collapse;width:100%;font-size:15px;font-variant-numeric:tabular-nums}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+td small.hint{white-space:normal;display:block;max-width:46ch}
+th{color:var(--dim);font-weight:600}.scroll{overflow-x:auto}
+dl.pairs{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--dim)}dd{margin:0;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media (min-width:700px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:5px solid var(--good);min-height:92px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.tile.warn{border-top-color:var(--warn)}.tile.alarm{border-top-color:var(--bad)}.tile.unknown,.tile.idle{border-top-color:var(--idle)}
+.tile .lbl{color:var(--dim);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tile .val{font-size:clamp(20px,6vw,28px);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.you{color:var(--dim);font-size:14px;margin:0 0 10px}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;color:var(--on-color)}
+.pill.alarm,.pill.due{background:var(--bad)}.pill.warn,.pill.soon{background:var(--warn)}.pill.ok{background:var(--good)}.pill.unknown{background:var(--idle)}
+.btn{display:inline-block;padding:10px 18px;border-radius:10px;border:0;background:var(--accent);color:var(--on-color);font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
+.btn:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn.gray{background:var(--idle)}.btn.red{background:var(--bad)}.btn:disabled{opacity:.5;cursor:default}
+.list a{display:flex;justify-content:space-between;gap:12px;padding:11px 4px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.list a small{color:var(--dim)}.msg{padding:12px 14px;border-radius:10px;margin:10px 0;background:var(--line)}
+.msg.bad{background:var(--bad);color:var(--on-color)}.msg.good{background:var(--good);color:var(--on-color)}
+footer{color:var(--dim);font-size:13px;text-align:center;padding:10px 16px 24px}
+"""
+
+
+def page(title, body, nav=None, active="", version="", foot=""):
+    """A whole HTML page. nav: [(href, name)] for the top bar, or None for a stand-alone file."""
+    links = ""
+    if nav:
+        links = "<nav>" + "".join(f'<a href="{h}" class="{"on" if h == active else ""}">{n}</a>' for h, n in nav) + "</nav>"
+    return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
+            f'content="width=device-width,initial-scale=1"><title>{esc(title)} - S.S.O.M.S</title>'
+            f"<style>{CSS}</style></head><body><header><b>S.S.O.M.S</b><span class='ver'>Bobcat M700</span>"
+            f'<span class="ver">{esc(version)}</span>{links}</header><main><h1>{esc(title)}</h1>{body}</main>'
+            f"<footer>{foot}</footer></body></html>")
+
+
+# ---------------------------------------------------------------- exports
+
+def _csv(header, rows):
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(header)
+    w.writerows(rows)
+    return buf.getvalue()
+
+
+def when(t):
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t)) if t and clock_valid(t) else ""
+
+
+def usage_csv(days):
+    head = ["date", "engine_h", "idle_h", "part_throttle_h", "full_h", "overspeed_h", "key_on_h", "starts", "cranks",
+            "crank_s", "stops", "hot_stops", "meter_start_h", "meter_end_h", "box_max_c", "outside_min_c",
+            "outside_max_c", "pi_max_c", "batt_run_min_v", "batt_run_max_v"]
+    rows = []
+    for k in sorted(days):
+        r = days[k]
+        rows.append([k] + [round(r.get(f, 0) / 3600, 3) for f in ("run_s", "idle_s", "work_s", "full_s", "over_s", "key_s")]
+                    + [r.get(f, 0) for f in ("starts", "cranks")] + [round(r.get("crank_s", 0), 1)]
+                    + [r.get(f, 0) for f in ("stops", "hot_stops")]
+                    + [r.get(f, "") for f in ("h0", "h1", "box_max", "amb_min", "amb_max", "pi_max", "v_run_min", "v_run_max")])
+    return _csv(head, rows)
+
+
+def alarms_csv(events):
+    return _csv(["when", "engine_h", "what", "level", "detail", "lasted_s", "cleared_from_list"],
+                [[when(e.get("t")), e.get("h"), e.get("what"), e.get("level"), e.get("detail"), e.get("dur_s"),
+                  "yes" if e.get("cleared") else ""] for e in events])
+
+
+def service_csv(service, hours):
+    rows = []
+    for it, state, left, days in service.status(hours):
+        s = service.state.get(it["id"], {})
+        rows.append([it["name"], service.interval(it), state, round(left, 1), "" if days is None else round(days),
+                     s.get("done_h", ""), when(s.get("done_t")), "install" if s.get("baseline") else ""])
+    status = _csv(["item", "every_h", "state", "hours_left", "days_left", "last_done_h", "last_done", "counted_from"], rows)
+    done = _csv(["item", "engine_h", "when"], [[h["name"], h["h"], when(h.get("t"))] for h in service.history])
+    return status, done
+
+
+def bundle(ctx):
+    """{filename: bytes} of everything worth keeping. ctx: the dash's objects (see web.py)."""
+    usage, events, service = ctx["usage"], ctx["events"], ctx["service"]
+    days = dict(usage.days)
+    evs = list(events.events)
+    hours = ctx["hours"]()
+    status, done = service_csv(service, hours)
+    units = ctx["cfg"].get("temperature", {}).get("units", "F").upper()
+    max_rpm = ctx["cfg"].get("tach", {}).get("max_rpm", 3500)
+    stamp = time.strftime("%b %d %Y %H:%M") if clock_valid() else "date not set"
+    body = (f'<p class="hint">Exported {stamp} at {hours:.1f} engine hours, software v{esc(ctx["version"])}.</p>'
+            + report_body(days, usage.bands(), evs, "all", units, max_rpm=max_rpm, links=False))
+    files = {
+        "report.html": page("Performance report", body, version=f'v{ctx["version"]}').encode(),
+        "usage-daily.csv": usage_csv(days).encode(),
+        "alarms.csv": alarms_csv(evs).encode(),
+        "service-status.csv": status.encode(),
+        "service-done.csv": done.encode(),
+    }
+    for name in ("usage.json", "events.json", "service.json", "hours_a.json", "hours_b.json", "updates.json"):
+        p = os.path.join(ctx["data_dir"], name)
+        if os.path.isfile(p):
+            with open(p, "rb") as f:
+                files["data/" + name] = f.read()
+    cfg_path = os.path.join(ctx["repo"], "config.toml")
+    if os.path.isfile(cfg_path):
+        with open(cfg_path, "rb") as f:
+            files["config.toml"] = f.read()
+    log_text = ctx.get("journal", lambda: "")()
+    if log_text:
+        files["dash-log.txt"] = log_text.encode()
+    files["README.txt"] = (
+        "S.S.O.M.S (System Status, Operations, and Maintenance System) export, Bobcat M700\n\n"
+        "report.html         open in any web browser: the performance report (all time)\n"
+        "usage-daily.csv     one line per day: engine hours by throttle band, starts, temperatures (opens in Excel)\n"
+        "alarms.csv          every alarm and warning recorded\n"
+        "service-status.csv  each service item: when it was last done, hours left\n"
+        "service-done.csv    service marked done on the dash\n"
+        "config.toml         the dash's settings\n"
+        "data/               the dash's own files (a backup: copy back into ~/bobcat-dash-data to restore)\n"
+        "dash-log.txt        the dash's log (for trouble-shooting)\n").encode()
+    return files
+
+
+def bundle_zip(ctx):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in bundle(ctx).items():
+            z.writestr(name, data)
+    return buf.getvalue()
+
+
+def export_name(hours):
+    return (time.strftime("%Y-%m-%d_%H%M") if clock_valid() else "no-date") + f"_{hours:.0f}h"
+
+
+def json_dump(obj):
+    return json.dumps(obj, indent=1).encode()

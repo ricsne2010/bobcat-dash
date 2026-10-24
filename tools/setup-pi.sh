@@ -63,7 +63,7 @@ cmdline_word() {
 step "Packages"
 apt-get update
 apt-get install -y python3-pygame python3-gpiozero python3-lgpio python3-smbus2 python3-pil \
-    i2c-tools git rpd-plym-splash
+    python3-qrcode i2c-tools git rpd-plym-splash
 
 step "I2C (the ADC and the tilt sensor)"
 raspi-config nonint do_i2c 0
@@ -72,6 +72,7 @@ step "Boot configuration ($CONFIG)"
 config_line "dtoverlay=w1-gpio"            # temperatures: DS18B20s on GPIO 4
 config_line "dtoverlay=max98357a"          # speaker: MAX98357A amp (mono or stereo board)
 config_line "disable_splash=1"             # no rainbow square at boot
+config_line "dtparam=rtc_bbat_vchg=3000000"  # Pi 5 clock battery (ML-2020): keep it charged (ignored on a Pi 4)
 if [ "$HOLD" = 1 ]; then
     config_line "gpio=26=op,dh"            # HOLD: keep the board's power on from the moment the Pi starts
 fi
@@ -88,16 +89,22 @@ sed -e "s#^User=pi#User=$USER_NAME#" -e "s#/home/pi/bobcat-dash#$REPO#g" \
 systemctl daemon-reload
 systemctl enable bobcat-dash
 
+step "Service Wi-Fi and USB stick helpers"
+install -m 755 "$REPO/tools/bobcat-dash-wifi" "$REPO/tools/bobcat-dash-usb" "$REPO/tools/bobcat-dash-reset-code" /usr/local/bin/
+sed "s/^pi ALL/$USER_NAME ALL/" "$REPO/tools/bobcat-dash-sudoers" > /tmp/bobcat-dash-sudoers
+if visudo -cf /tmp/bobcat-dash-sudoers >/dev/null; then
+    install -m 440 /tmp/bobcat-dash-sudoers /etc/sudoers.d/bobcat-dash
+else
+    echo "   !! sudoers file didn't check out; skipped (no key-off power off, service Wi-Fi or USB stick)"
+fi
+rm -f /tmp/bobcat-dash-sudoers
+if ! nmcli -t -f WIFI general 2>/dev/null | grep -q enabled; then
+    echo "   !! Wi-Fi is off or blocked: set the Wi-Fi country (sudo raspi-config > Localisation > WLAN Country)"
+fi
+
 if [ "$HOLD" = 1 ]; then
     step "Key-off shutdown (power hold)"
     install -m 755 "$REPO/tools/bobcat-dash-poweroff" /usr/lib/systemd/system-shutdown/
-    sed "s/^pi ALL/$USER_NAME ALL/" "$REPO/tools/bobcat-dash-sudoers" > /tmp/bobcat-dash-sudoers
-    if visudo -cf /tmp/bobcat-dash-sudoers >/dev/null; then
-        install -m 440 /tmp/bobcat-dash-sudoers /etc/sudoers.d/bobcat-dash
-    else
-        echo "   !! sudoers file didn't check out; skipped (the dash can't power off by itself)"
-    fi
-    rm -f /tmp/bobcat-dash-sudoers
     install -m 755 "$REPO/tools/bobcat-dash-keywatch" /usr/local/bin/
     install -m 644 "$REPO/tools/bobcat-dash-keywatch.service" /etc/systemd/system/
     systemctl daemon-reload

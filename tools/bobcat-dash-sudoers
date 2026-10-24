@@ -1,5 +1,9 @@
-# Bobcat dash: lets the dash power the Pi off at key-off, without a password.
+# Bobcat dash: lets the dash power the Pi off at key-off, switch its SERVICE WI-FI hotspot, and mount a
+# USB stick, without a password. Only these exact programs.
 # Install:  sudo install -m 440 tools/bobcat-dash-sudoers /etc/sudoers.d/bobcat-dash
 #           sudo visudo -c        (checks the syntax; it must say "parsed OK")
-# Change "pi" if you picked a different username.
+# Change "pi" if you picked a different username. (tools/setup-pi.sh does all of this.)
 pi ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
+pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-wifi
+pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-usb
+pi ALL=(root) NOPASSWD: /usr/local/bin/bobcat-dash-reset-code

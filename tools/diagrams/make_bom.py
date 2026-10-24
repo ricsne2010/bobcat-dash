@@ -54,7 +54,7 @@ SECTIONS = [
   (1, "Rectifier diode (optional)", "1N4007", "1N4007", "Sch. 6", "Only with a coil horn or relay"),
  ]),
  ("BREAKOUT BOARD rev 2.4 (replaces the perfboard; key-off shutdown, light sensing, coil tach in its own HV corner)", [
-  (1, "Bare PCB", "162 × 159 mm (rev 2.8), 2 layers, 1.6 mm, 1 oz", "breakout-board/fab gerbers zip", "Board README", "Most board makers sell a minimum of 5. Has the Project Moon Pi logo on top"),
+  (1, "Bare PCB", "162 × 159 mm (rev 2.9), 2 layers, 1.6 mm, 1 oz", "breakout-board/fab gerbers zip", "Board README", "Most board makers sell a minimum of 5. Has the Project Moon Pi logo on top"),
   (1, "Board components kit", "Everything in breakout-board/fab/board-bom.csv", "—", "Board README", "Includes the resistors, diodes, optos and MOSFET listed above, plus the power-hold parts (IRF4905, CD4060, BC547 ×2)"),
   (1, "Pluggable terminal plugs", "5.08 mm: 5× 2-pin, 3× 3-pin, 1× 4-pin", "Phoenix MSTB 2,5/x-ST-5,08", "Board README", "Mate with the board's MSTBA headers"),
   (1, "40-pin IDC ribbon cable", "Female–female, 15–30 cm", "—", "Board README", "Pi GPIO to board J1, pin 1 to pin 1"),
@@ -80,6 +80,14 @@ SECTIONS = [
   (2, "Waterproof temperature probe", "DS18B20 in a stainless tip, 3-wire cable (red 3V3, black GND, yellow/white data)", "—", "README: Temperatures", "One for the cab, one for outside air (shade it from sun and engine heat). Optional: the board measures the box itself"),
   (1, "Micro-Fit 3.0 receptacle housing", "3-position, single row, latching", "Molex 43645-0300", "Board README: TEMP PROBE", "Plugs into the board's TEMP PROBE header J14 (43650-0315)"),
   (3, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "Board README: TEMP PROBE", "Two probes: join their 3 wires in the cable (each wire to the same pin)"),
+  (1, "Micro-Fit 3.0 receptacle housing", "8-position, single row, latching", "Molex 43645-0800", "Board README: BUTTON POD", "Plugs into the board's POD header J17 (43650-0815)"),
+  (8, "Micro-Fit 3.0 crimp pins", "Female, 20-24 AWG", "Molex 43030-0007", "Board README: BUTTON POD", "8-core cable, board to the pod (buttons, SILENCE, GND, fan)"),
+  (4, "Pushbutton head, black", "Eaton M22, 22 mm, momentary", "Eaton M22-D-S (flat-style head)", "enclosure/button-pod", "LEFT, RIGHT, OK, BACK"),
+  (1, "Pushbutton head, red mushroom", "Eaton M22, 22 mm, momentary", "Eaton M22-DP-R", "enclosure/button-pod", "ALARM SILENCE"),
+  (5, "Fixing adapter", "Eaton M22", "Eaton M22-A", "enclosure/button-pod", "One per button"),
+  (5, "Contact block, 1 NO", "Eaton M22", "Eaton M22-K10", "enclosure/button-pod", "One per button"),
+  (1, "Exhaust fan", "40 x 40 x 10 mm, 12 V", "any (two-wire)", "enclosure/button-pod", "Back wall of the pod; switched by the board (Q5)"),
+  (1, "Cable gland", "M20, for the HDMI cable", "nylon or nickel-brass", "enclosure/button-pod", "Back wall of the pod"),
  ]),
  ("CHARGING: Delco 10SI 3-wire alternator (wiring-schematic.jpg, section 7)", [
   (1, "Rectifier diode", "1N4001, 1 A 50 V", "1N4001", "Sch. 7", "In the terminal 1 (excite) wire, band toward the alternator: stops the running alternator back-feeding the key circuit (engine run-on, dash never sees key-off)"),

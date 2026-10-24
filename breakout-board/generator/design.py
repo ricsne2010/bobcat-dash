@@ -42,6 +42,7 @@ PI = {1: "+3V3", 2: "+5V", 3: "SDA", 4: "+5V", 5: "SCL", 6: "GND", 7: "W1_DQ", 9
       12: "I2S_BCLK", 13: "HORN_GPIO", 14: "GND", 15: "OIL_GPIO", 16: "FILT_LED", 17: "+3V3",
       18: "TEMP_LED", 20: "GND", 22: "LT_FRONT_GPIO", 25: "GND", 29: "BTN_GPIO", 30: "GND", 31: "KEY_GPIO",
       32: "LT_REAR_GPIO", 33: "LT_WORK_GPIO", 34: "GND", 35: "I2S_LRC",
+      19: "BTN_BACK_GPIO", 23: "FAN_GPIO", 24: "BTN_L_GPIO", 26: "BTN_R_GPIO", 38: "BTN_OK_GPIO",   # rev 2.9
       36: "KILL_GPIO", 37: "HOLD_GPIO", 39: "GND", 40: "I2S_DIN"}
 part("J1", "Connector_Generic:Conn_02x20_Odd_Even", "TO PI (40-pin ribbon)",
      "Connector_IDC:IDC-Header_2x20_P2.54mm_Vertical",
@@ -78,6 +79,24 @@ part("J10", "Connector_Generic:Conn_01x06", "ADS1115 PWR/I2C", "Connector_PinSoc
 part("J15", "Connector_Generic:Conn_01x06", "ADS1115 INPUTS", "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
      {1: None, 2: "TEMP_ADC", 3: "FILT_ADC", 4: "FUEL_ADC", 5: "BATT_ADC", 6: None}, "adc",
      "Socket for the ADS1115 board's top row: A+ A3 A2 A1 A0 A-")
+
+# ---------------------------------------------------------------- rev 2.9: button pod (POD plug)
+# One latching 8-pin Micro-Fit to the button pod on top of the box: the 4 menu buttons, ALARM SILENCE
+# (in parallel with the SILENCE plug J8, either works), GND, and the pod's 12 V exhaust fan, which the Pi
+# switches through Q5. Each button input is filtered like SILENCE: 1k in series, 100 nF to GND.
+part("J17", "Connector_Generic:Conn_01x08", "POD", "Connector_Molex:Molex_Micro-Fit_3.0_43650-0815_1x08_P3.00mm_Vertical",
+     {1: "BTN_L_IN", 2: "BTN_R_IN", 3: "BTN_OK_IN", 4: "BTN_BACK_IN", 5: "BTN_IN", 6: "GND", 7: "+12V", 8: "FAN_DRAIN"},
+     "pod", "Latching Molex Micro-Fit 3.0 8-pin to the button pod: LEFT RIGHT OK BACK SILENCE GND FAN+ FAN-")
+for i, (b, name) in enumerate([("L", "LEFT"), ("R", "RIGHT"), ("OK", "OK"), ("BACK", "BACK")]):
+    R(f"R{89 + i}", "1k", f"BTN_{b}_IN", f"BTN_{b}_GPIO", "pod", f"{name} button: series protection")
+    C(f"C{12 + i}", "100nF", f"BTN_{b}_GPIO", "GND", "pod", f"{name} button: debounce / noise filter")
+part("Q5", "Transistor_FET:IRLZ44N", "IRLZ44N", FP_TO220, {1: "FAN_G", 2: "FAN_DRAIN", 3: "GND"}, "pod",
+     "Logic-level MOSFET: pod fan, low-side switch")
+R("R93", "100", "FAN_GPIO", "FAN_G", "pod", "Gate resistor")
+R("R94", "10k", "FAN_G", "GND", "pod", "Keeps the fan off while the Pi boots")
+D("D46", "1N4007", "FAN_DRAIN", "+12V", FP_D41, "pod", "Flyback (fan motor)")
+R("R95", "3.3k", "+12V", "FAN_LR", "pod")
+LED("D47", "FAN_LR", "FAN_DRAIN", "pod", "Pod fan ON", "green")
 
 # ---------------------------------------------------------------- power, fuses, protection, power LEDs
 part("F1", "Device:Fuse", "5A", FP_FUSE, {1: "+12V_IN", 2: "+12V_BAT"}, "power", "Mini blade fuse: main feed")
@@ -243,12 +262,12 @@ R("R85", "47", "+3V3", "TILT_3V3", "tilt", "Sensor supply: limits a shorted cabl
 
 # ---------------------------------------------------------------- temperature (rev 2.7)
 # 1-Wire bus on GPIO 4 (Pi pin 7, the Pi's standard 1-Wire pin: dtoverlay=w1-gpio). DS18B20s, +-0.5 C, -55..125 C.
-#  * U11 on the board: the breakout box's air temperature (BOX HOT warnings).
+#  * U11 on the board: the electronics box (E-BOX) air temperature (E-BOX HOT warnings).
 #  * J14: latching 3-pin connector for external waterproof DS18B20 probes (cab, outside air). Several probes
 #    can share it (each has its own ID). 100R in the probe's data line and 47R in its 3.3 V feed protect the
 #    Pi and its 3.3 V rail from a damaged probe cable, as on the TILT connector.
 part("U11", "Sensor_Temperature:DS18B20", "DS18B20", "Package_TO_SOT_THT:TO-92_Inline_Wide",
-     {1: "GND", 2: "W1_DQ", 3: "+3V3"}, "temp", "Board / box air temperature (1-Wire)")
+     {1: "GND", 2: "W1_DQ", 3: "+3V3"}, "temp", "E-BOX TEMP SENSOR: electronics box air temperature (1-Wire)")
 R("R86", "4.7k", "W1_DQ", "+3V3", "temp", "1-Wire pull-up")
 part("J14", "Connector_Generic:Conn_01x03", "TEMP PROBE", "Connector_Molex:Molex_Micro-Fit_3.0_43650-0315_1x03_P3.00mm_Vertical",
      {1: "GND", 2: "PROBE_DQ", 3: "PROBE_3V3"}, "temp",

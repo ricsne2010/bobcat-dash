@@ -1,0 +1,4 @@
+#!/bin/bash
+# Bobcat dash: deletes the "forget the maintenance code" file from the SD card's boot drive once the dash has
+# acted on it (run by the dash through sudo; see tools/bobcat-dash-sudoers). Takes no arguments.
+rm -f /boot/firmware/reset-code /boot/reset-code

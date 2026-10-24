@@ -27,8 +27,9 @@ def SZ(w, h):                            # a size, not a position: no TOP shift
 ADS_X = 123.0                        # ADS1115 module centre line (x)
 STEREO_X, STEREO_ROW = 42.0, 26.0      # stereo amp module: centre line (x) and header row (y), beside the mono amp
 J1_X, J1_Y = 36.0, -17.5               # ribbon header (was 50, 11 before the top strip)
+POD_X = 62.0                           # rev 2.9: button pod plug J17 (pin 1) and its circuits, x 58..106
 LED_DX, LED_DY = J1_X - 50, J1_Y - 11 + 2.5  # power LEDs move with it (2.5 mm lower: room for its label)
-TILT_DX, TILT_DY = -18.0, -25.0        # TILT plug + resistors: top-left corner of the strip
+TILT_Y = 99.5                          # rev 2.9: TILT plug (pin 1) on the right-hand strip, under the E-BOX sensor
 CONN_Y = H - 10.54                   # harness connectors: plug face flush with the bottom edge
 P = {
     # rev 2.2: H3 moved up like H4, so the row starts 5 mm further left and J5 can grow to 4 pins
@@ -42,6 +43,13 @@ P = {
     # row. STEREO (Adafruit 6513) in the new top strip on J16: holes at its four corners, the lower two in line
     # with its row. Fit one or the other.
     "H9": (8 + 1.27, 26 - 13.97, 0), "H10": (8 + 13.97, 26 - 13.97, 0),
+    # rev 2.9: button pod plug (standing, against the ADC module), its 4 input filters and the fan driver,
+    # in the space the ribbon header left
+    "J17": (POD_X + 42.0, 6.6, 270),
+    "R89": (POD_X - 2, 8.0, 270), "R90": (POD_X + 2, 8.0, 270), "R91": (POD_X + 6, 8.0, 270), "R92": (POD_X + 10, 8.0, 270),
+    "C12": (POD_X - 2, 20.0, 270), "C13": (POD_X + 2, 20.0, 270), "C14": (POD_X + 6, 20.0, 270), "C15": (POD_X + 10, 20.0, 270),
+    "D46": (POD_X + 16, 4.8, 0), "R95": (POD_X + 16, 10.8, 0), "D47": (POD_X + 28.5, 10.8, 0),
+    "R93": (POD_X + 16, 16.0, 0), "R94": (POD_X + 16, 21.0, 0), "Q5": (POD_X + 18, 27.8, 0),
     "J16": (STEREO_X - 6.35, STEREO_ROW, 90),
     "H11": (STEREO_X - 10.16, STEREO_ROW, 0), "H12": (STEREO_X + 10.16, STEREO_ROW, 0),
     "H13": (STEREO_X - 10.16, STEREO_ROW - 13.97, 0), "H14": (STEREO_X + 10.16, STEREO_ROW - 13.97, 0),
@@ -64,10 +72,10 @@ P = {
     "R40": (119, 76.5, 0), "C3": (119, 83, 0),
     "JP1": (133, 44, 0), "JP2": (139, 44, 0),
     "R15": (47, 58, 0),
-    # rev 2.5: TILT header (top-left corner, between the amp module and the ribbon header), its resistors below
-    # rev 2.6: a latching Micro-Fit 3.0 instead of a pin header
-    "J13": (30.0 + TILT_DX, 4.4 + TILT_DY, 0), "R85": (30.0 + TILT_DX, 10.6 + TILT_DY, 270),
-    "R83": (33.6 + TILT_DX, 10.6 + TILT_DY, 270), "R84": (37.2 + TILT_DX, 10.6 + TILT_DY, 270),
+    # rev 2.6: a latching Micro-Fit 3.0. Rev 2.9: moved to the right-hand strip under the E-BOX sensor (its own
+    # TILT box): the three resistors standing in a row at the top, the plug under them, pins top to bottom
+    "R85": (152.5, 86.6, 270), "R83": (155.9, 86.6, 270), "R84": (159.3, 86.6, 270),
+    "J13": (154.8, TILT_Y, 270),
 }
 # optocoupler channels: one column each, lined up over their connectors
 for x0, name, u, i in [(47, "TACH", "U4", 4), (61, "OIL", "U1", 1)]:
@@ -146,7 +154,8 @@ LIGHT_REF_AT = {}
 for u, r, led, dz in [("U7", "R17", "D18", "D28"), ("U8", "R18", "D19", "D29"), ("U9", "R19", "D20", "D38")]:
     LIGHT_REF_AT.update({u: (3.81, 1.27), r: (3.81, 0.0), led: (1.27, 3.3), dz: (6.8, 0.0)})
 LIGHT_REF_AT.update({"R80": (6.35, 0.0), "R81": (-6.35, 0.0)})        # coil resistors: label on the body
-VERT_REF = {"R83", "R84", "R85", "R86", "R87", "R88"}                                       # standing resistors: label along the body
+VERT_REF = {"R83", "R84", "R85", "R86", "R87", "R88", "R89", "R90", "R91", "R92"}                                       # standing resistors: label along the body
+VERT_CAP = {"C12", "C13", "C14", "C15"}
 missing = [p["ref"] for p in PARTS if p["ref"] not in P]
 assert not missing, missing
 
@@ -242,7 +251,9 @@ for p in PARTS:
         ref.SetPosition(V(x + dx, y + dy)); ref.SetTextAngleDegrees(0)
     if p["ref"] in VERT_REF:
         ref.SetPosition(V(x, y + 3.81)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
-    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16"):
+    if p["ref"] in VERT_CAP:            # standing disc capacitors: label along the body
+        ref.SetPosition(V(x, y + 2.5)); ref.SetTextAngleDegrees(90); ref.SetTextSize(SZ(0.8, 0.8))
+    if p["ref"].startswith(("TP", "H")) or p["ref"] in ("F1", "F2", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16", "J17"):
         ref.SetVisible(False)
 
 # ---------------------------------------------------------------- copper-free rings under the standoffs
@@ -284,6 +295,21 @@ for p in PARTS:
             v = V(x, y); o.Append(v.x, v.y)
         e.SetZoneName(f"standoff {p['ref']} edge")
         board.Add(e)
+
+# rev 2.9: a thin no-track border all round, so the router never runs copper inside the 0.5 mm edge clearance
+EDGE_KEEP = 0.8
+for x0, y0, x1, y1 in ((0, -TOP, W, -TOP + EDGE_KEEP), (0, H - EDGE_KEEP, W, H),
+                       (0, -TOP, EDGE_KEEP, H), (W - EDGE_KEEP, -TOP, W, H)):
+    e = pcbnew.ZONE(board)
+    e.SetIsRuleArea(True)
+    e.SetDoNotAllowTracks(True); e.SetDoNotAllowVias(True); e.SetDoNotAllowZoneFills(False)
+    e.SetDoNotAllowPads(False); e.SetDoNotAllowFootprints(False)
+    ls = pcbnew.LSET(); ls.AddLayer(pcbnew.F_Cu); ls.AddLayer(pcbnew.B_Cu); e.SetLayerSet(ls)
+    o = e.Outline(); o.NewOutline()
+    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+        v = V(x, y); o.Append(v.x, v.y)
+    e.SetZoneName("edge border")
+    board.Add(e)
 
 # ---------------------------------------------------------------- outline (rounded rectangle)
 R_CORNER = 3.0
@@ -384,8 +410,12 @@ silk("STEREO AMP", STEREO_X, STEREO_ROW - 9.0, 1.1, bold=True); silk("MAX98357A 
 silk("Adafruit 6513", STEREO_X, STEREO_ROW - 5.2, 0.8)
 for i, lab in enumerate(["VDD", "GND", "BCLK", "LRC", "DIN", "GAIN"]):
     silk(lab, STEREO_X - 6.35 + i * 2.54, STEREO_ROW + 5.5, 0.8, align="left", angle=90)
-silk("FIT ONE AMP ONLY", STEREO_X + 15.0, STEREO_ROW - 9.0, 0.9, bold=True, align="left")
-silk("(mono or stereo)", STEREO_X + 15.0, STEREO_ROW - 7.2, 0.8, align="left")
+silk("FIT ONE AMP ONLY  (mono or stereo)", 30.0, 4.6, 0.9, bold=True)   # rev 2.9: above both amp outlines
+# rev 2.9: button pod plug J17: pin names beside the pins (like TEMP PROBE), title, fan LED
+for i, lab in enumerate(["LEFT", "RIGHT", "OK", "BACK", "SILENCE", "GND", "FAN +12V", "FAN -"]):
+    silk(lab, POD_X + 38.6, 6.6 + i * 3.0 + 0.4, 0.8, bold=True, align="right")
+silk("BUTTON POD", POD_X + 30.0, 30.4, 0.9, bold=True)
+silk("FAN ON", POD_X + 29.8, 14.2, 0.8, bold=True)
 for i, lab in enumerate(["LRC", "BCLK", "DIN", "GAIN", "SD", "GND", "VIN"]):
     silk(lab, 8 + i * 2.54, 31.6, 0.8, align="left", angle=90)
 # ADS1115 module outline (25.4 x 17.8 mm, its rows 2.54 mm in from its long edges), pin names outside it
@@ -411,20 +441,20 @@ silk("F2  HORN  1A", P["F2"][0] + 5, P["F2"][1] - 3.2, 0.9, bold=True)
 
 # title block
 # rev 2.8: title block in the top strip, beside the logo (the ribbon to the Pi leaves the strip clear above J1)
-silk("BOBCAT DASH", 106.0, -16.0, 1.8, bold=True, align="left")
+silk("S.S.O.M.S", 106.0, -16.0, 1.8, bold=True, align="left")     # System Status, Operations, and Maintenance System
 silk("BREAKOUT BOARD", 106.0, -12.8, 1.5, bold=True, align="left")
-silk("rev 2.8  2026-10", 106.0, -9.6, 1.0, align="left")
-silk("Project Moon Pi", 106.0, -7.2, 0.9, align="left")
+silk("Bobcat M700", 106.0, -9.8, 1.0, bold=True, align="left")
+silk("rev 2.9  2026-10", 106.0, -7.6, 1.0, align="left")
+silk("Project Moon Pi", 106.0, -5.4, 0.9, align="left")
 # rev 2.7: TEMPERATURE column: probe pin names beside the connector
 for i, lab in enumerate(["GND", "DQ", "3V3"]):
     silk(lab, 158.2, 38.0 + i * 3.0 + 0.4, 0.8, bold=True, align="left")
 silk("PROBE", 155.9, 33.2, 0.8, bold=True)
-silk("BOX", 156.0, 79.8, 0.8, bold=True)
-silk("SENSOR", 156.0, 81.4, 0.8, bold=True)
-# rev 2.5: TILT sensor header: pin names under the pins, title beside it
+silk("E-BOX TEMP", 155.9, 79.8, 0.8, bold=True)       # rev 2.9: E-BOX = the electronics box
+silk("SENSOR", 155.9, 81.4, 0.8, bold=True)
+# rev 2.9: TILT sensor plug on the right-hand strip: pin names beside the pins, like the PROBE plug
 for i, lab in enumerate(["GND", "3V3", "SDA", "SCL"]):
-    silk(lab, 30.0 + TILT_DX + i * 3.0, 9.0 + TILT_DY, 0.8)
-silk("TILT SENSOR (I2C)", 33.6 + TILT_DX, 20.6 + TILT_DY, 0.9, bold=True)
+    silk(lab, 158.2, TILT_Y + i * 3.0 + 0.4, 0.8, bold=True, align="left")
 silk("Every LED: lit = signal present.  HYD FILT/TEMP LED blinking = wire broken", 46.0, 41.2, 0.8, align="left")
 silk("4.7k resistor across each HYD FILT/TEMP switch, at the switch", 46.0, 42.9, 0.8, align="left")
 
@@ -483,6 +513,7 @@ group_box([(149.75, 114.75), (1.2, 114.75), (1.2, 90.6), (128.05, 90.6), (128.05
 # and the new TEMPERATURE column has its own outline
 silk_line(149.75, 40.3, 149.75, 114.75)
 group_box(rect(150.4, 31.2, 161.4, 83.4), "TEMP", 155.9)
+group_box(rect(150.4, 84.6, 161.4, 112.4), "TILT (I2C)", 155.9)
 
 # HIGH VOLTAGE corner: double outline, warning triangles, open to the board edge where J12 plugs in
 HV = (0.0, 40.6, 39.6, 57.0)

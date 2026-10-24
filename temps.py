@@ -103,7 +103,7 @@ class TempSensors:
 
 
 class TempStatus:
-    """BOX temperature -> OK / WARN / ALARM (with 2 C hysteresis); the ambient readout text."""
+    """E-BOX (electronics box) temperature -> OK / WARN / ALARM (with 2 C hysteresis); the ambient readout text."""
 
     def __init__(self, cfg):
         tc = cfg.get("temperature", {})
@@ -132,7 +132,7 @@ class TempStatus:
                 self.state = WARN
             else:
                 self.state = OK
-        word = {OK: "BOX", WARN: "BOX HOT", ALARM: "BOX HOT", UNKNOWN: "BOX"}[self.state]
+        word = {OK: "E-BOX", WARN: "E-BOX HOT", ALARM: "E-BOX HOT", UNKNOWN: "E-BOX"}[self.state]
         probes = snap.get("probes", [])
         if self.ambient == "average":
             got = [t for _, t in probes if t is not None]
@@ -157,7 +157,7 @@ def list_cli(cfg):
     st = TempStatus(cfg)
     print("Temperature sensors on the 1-Wire bus:")
     for i, t in vals.items():
-        role = "BOARD (box air)" if i == board else f"probe '{names[i]}'" if i in names else "not assigned"
+        role = "BOARD (E-box air)" if i == board else f"probe '{names[i]}'" if i in names else "not assigned"
         print(f"  {i}   {st.fmt(t):>7}   {role}")
     print("\nTo tell them apart, hold one in your fingers for 20 s and run this again: its reading rises.")
     print("Then name them in config.toml, [temperature]:  board_id = \"28-...\"  and")

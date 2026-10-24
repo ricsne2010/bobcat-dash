@@ -1,5 +1,6 @@
 """Stage 2: autoroute with Freerouting, then add ground fills. Run with KiCad's Python."""
 import os
+import random
 import subprocess
 import sys
 
@@ -8,10 +9,31 @@ import pcbnew
 PCB = sys.argv[1]
 MM = pcbnew.FromMM
 
+def shuffle_nets(path, seed):
+    """Freerouting is deterministic: the same .dsn always routes the same way. Its result depends on the order
+    of the nets, though, so each new attempt gets the nets in a different (seeded, repeatable) order."""
+    lines = open(path).read().split("\n")
+    start = next(i for i, l in enumerate(lines) if l.strip() == "(network")
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("    (class "))
+    blocks, cur = [], []
+    for l in lines[start + 1:end]:
+        cur.append(l)
+        if l == "    )":
+            blocks.append(cur)
+            cur = []
+    assert not cur, "unexpected .dsn layout"
+    random.Random(seed).shuffle(blocks)
+    lines[start + 1:end] = [l for b in blocks for l in b]
+    open(path, "w").write("\n".join(lines))
+
+
 best = None
-for attempt in range(1, 9):
+ATTEMPTS = int(os.environ.get("ROUTE_ATTEMPTS", "12"))
+for attempt in range(1, ATTEMPTS + 1):
     board = pcbnew.LoadBoard(PCB)
     assert pcbnew.ExportSpecctraDSN(board, "route.dsn"), "DSN export failed"
+    if attempt > 1:
+        shuffle_nets("route.dsn", attempt)
     # Freerouting's own messages go to out/route.log: watch it with  tail -f out/route.log
     # (no window: with its GUI on, Freerouting 2.5 routes but never saves the result)
     with open(os.path.join(os.path.dirname(os.path.abspath(PCB)), "route.log"), "a") as log:

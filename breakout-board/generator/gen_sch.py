@@ -563,6 +563,9 @@ def blk_analog(ox, oy):
     pwr("GND", pin("J8", 2))
     place("R40", bx + 13.97, by, 90, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
     W(pin("J8", 1), pin("R40", 1))
+    mid = (pin("J8", 1)[0] + 5.08, by)                  # rev 2.9: the pod's SILENCE joins here (J17 pin 5)
+    W(mid, (mid[0], by - 5.08))
+    gl("BTN_IN", (mid[0], by - 5.08), 90)
     nb = (bx + 22.86, by)
     W(pin("R40", 2), nb, (bx + 30.48, by))
     place("C3", bx + 22.86, by + 3.81)
@@ -649,7 +652,7 @@ def blk_tilt(ox, oy):
 
 def blk_temp(ox, oy):
     box(ox, oy, ox + 88, oy + 50, "TEMPERATURE (rev 2.7)",
-        "1-Wire on GPIO 4. U11 measures the breakout box's air; J14 takes external DS18B20 probes (cab, outside). "
+        "1-Wire on GPIO 4. U11 (E-BOX TEMP SENSOR) measures the electronics box's air; J14 takes external DS18B20 probes (cab, outside). "
         "Several probes can share J14.")
     ux, uy = ox + 15.24, oy + 27.94
     place("U11", ux, uy, ref_at=(-8.89, -1.27, "right"), val_at=(-8.89, 1.27, "right"))
@@ -708,10 +711,62 @@ def blk_flags(ox, oy):
             pwr(net, (x, y + 2.54), down=True)
 
 
+def blk_pod(ox, oy):
+    box(ox, oy, ox + 150, oy + 78, "BUTTON POD (rev 2.9)",
+        "J17 to the pod on the box top: 4 menu buttons and ALARM SILENCE to GND, and the pod's 12 V exhaust fan. "
+        "Buttons filtered like SILENCE (1k + 100 nF). The Pi switches the fan through Q5; R94 keeps it off at boot.")
+    jx, jy = ox + 12.7, oy + 35.56
+    place("J17", jx, jy, mirror=True, ref_at=(-2.54, -12.7, None), val_at=(-2.54, 15.24, None))
+    for n, net in PART["J17"]["pins"].items():          # short labelled stubs, like the plug-in modules
+        a = pin("J17", int(n))
+        b_ = (a[0] + 2.54, a[1])
+        W(a, b_)
+        if net in ("GND", "+12V"):
+            pwr(net, b_, side="right")
+        else:
+            gl(net, b_, 0)
+    # the four button filters, in a column
+    for i, b in enumerate(["L", "R", "OK", "BACK"]):
+        r, c = f"R{89 + i}", f"C{12 + i}"
+        x0, y = ox + 50.8, oy + 19.05 + i * 11.43
+        gl(f"BTN_{b}_IN", (x0, y), 180)
+        place(r, x0 + 7.62, y, 90, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
+        W((x0, y), pin(r, 1))
+        nd = (x0 + 15.24, y)
+        W(pin(r, 2), nd, (x0 + 22.86, y))
+        place(c, x0 + 15.24, y + 3.81)
+        pwr("GND", pin(c, 2))
+        gl(f"BTN_{b}_GPIO", (x0 + 22.86, y))
+    # fan driver, like the horn's
+    qx, qy = ox + 110.49, oy + 58.42
+    place("Q5", qx, qy, ref_at=(5.08, -1.27, "left"), val_at=(5.08, 1.27, "left"))
+    pwr("GND", pin("Q5", 3))
+    yt, yd = oy + 22.86, oy + 40.64
+    xa, xb = qx + 2.54, qx + 15.24
+    W(pin("Q5", 2), (xa, yd))
+    place("D46", xa, yt + 3.81, 270)
+    W(pin("D46", 2), (xa, yd))
+    place("R95", xb, yt + 3.81)
+    place("D47", xb, yt + 11.43, 90)
+    W(pin("D47", 1), (xb, yd))
+    W((xa - 5.08, yt), (xa, yt), (xb, yt))
+    pwr("+12V", (xa - 5.08, yt))
+    W((xa, yd), (xb, yd), (xb + 7.62, yd))
+    gl("FAN_DRAIN", (xb + 7.62, yd))
+    ng = (qx - 10.16, qy)
+    W(pin("Q5", 1), ng)
+    place("R94", qx - 10.16, qy + 3.81)
+    pwr("GND", pin("R94", 2))
+    place("R93", qx - 17.78, qy, 90, ref_at=(0, -2.54, None), val_at=(0, 2.54, None))
+    W(pin("R93", 2), ng)
+    gl("FAN_GPIO", pin("R93", 1), 180)
+    text("J17: 1 LEFT  2 RIGHT  3 OK  4 BACK  5 SILENCE  6 GND  7 FAN +12V  8 FAN -", ox + 2.54, oy + 74.93, 1.27)
+
+
 def blk_mech(ox, oy):
-    box(ox, oy, ox + 36.83, oy + 74, "MOUNTING", "H1-H4 corners, H15-H18 mid-sides, H19 centre. H5-H8: ADS1115, H9-H10: mono amp, H11-H14: stereo amp")
+    box(ox, oy, ox + 36.83, oy + 86, "MOUNTING", "M3: H1-4 corners, H15-18 sides, H19 centre. M2.5: H5-8 ADC, H9-10 mono, H11-14 stereo amp")
     for i in range(19):
-        place(f"H{i + 1}", ox + 6.35 + (i % 4) * 8.89, oy + 16.51 + (i // 4) * 12.7, ref_at=(0, -3.81, None),
+        place(f"H{i + 1}", ox + 6.35 + (i % 4) * 8.89, oy + 27.94 + (i // 4) * 12.7, ref_at=(0, -3.81, None),
               val_at=(0, 3.81, None))
 
 
@@ -723,6 +778,7 @@ blk_analog(177.8, 129.54)
 blk_lights(177.8, 200.66)
 blk_testpoints(177.8, 261.62)
 blk_mech(393.7, 261.62)
+blk_pod(12.7, 299.72)
 blk_tilt(177.8, 299.72)
 blk_temp(274.32, 299.72)
 blk_pi(434.34, 12.7)
@@ -877,8 +933,8 @@ for a, b in segs:
 
 doc = [Sym("kicad_sch"), [Sym("version"), 20250114], [Sym("generator"), "eeschema"], [Sym("generator_version"), "9.0"],
        [Sym("uuid"), ROOT], [Sym("paper"), "A2"],
-       [Sym("title_block"), [Sym("title"), "Bobcat Digital Dash - Breakout Board"], [Sym("date"), "2026-10-22"],
-        [Sym("rev"), "2.8"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
+       [Sym("title_block"), [Sym("title"), "S.S.O.M.S Breakout Board - Bobcat M700"], [Sym("date"), "2026-10-22"],
+        [Sym("rev"), "2.9"], [Sym("comment"), 1, "Harness breakout between the machine wiring and the Raspberry Pi"],
         [Sym("comment"), 2, "Wired schematic: one box per circuit block, the same blocks as the board silkscreen"]],
        [Sym("lib_symbols")] + list(lib_syms.values())] + items + \
       [[Sym("sheet_instances"), [Sym("path"), "/", [Sym("page"), "1"]]], [Sym("embedded_fonts"), Sym("no")]]

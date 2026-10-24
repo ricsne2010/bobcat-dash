@@ -1,0 +1,25 @@
+#!/bin/bash
+# Bobcat dash: mount / unmount the USB stick (run by the dash through sudo; see tools/bobcat-dash-sudoers).
+#   bobcat-dash-usb mount /dev/sdXN     mount it at /mnt/bobcat-usb, writable by the dash's user
+#   bobcat-dash-usb unmount             flush and unmount
+set -eu
+MNT=/mnt/bobcat-usb
+case "${1:-}" in
+    mount)
+        [[ "${2:-}" =~ ^/dev/sd[a-z][0-9]*$ ]] || { echo "not a USB disk: ${2:-}" >&2; exit 2; }
+        U="${SUDO_UID:-1000}"; G="${SUDO_GID:-1000}"
+        mkdir -p "$MNT"
+        mountpoint -q "$MNT" && umount "$MNT"
+        # FAT32 / exFAT (how sticks come): owned by the dash's user. Anything else: mounted as it is.
+        mount -o "uid=$U,gid=$G,umask=022,nosuid,nodev,noexec" "$2" "$MNT" 2>/dev/null \
+            || mount -o nosuid,nodev,noexec "$2" "$MNT"
+        echo "$MNT"
+        ;;
+    unmount)
+        sync
+        mountpoint -q "$MNT" && umount "$MNT"
+        echo done
+        ;;
+    *)
+        echo "usage: $0 mount /dev/sdXN | unmount" >&2; exit 2 ;;
+esac

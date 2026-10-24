@@ -351,6 +351,8 @@ class SimSensors:
         ("J", "light display: big tiles / small icons"),
         ("A", "reset all overrides"),
         ("M / click", "silence alarm (new alarms sound again)"),
+        ("; / '", "menu buttons LEFT / RIGHT (screens, lists)"),
+        ("Enter / Bksp", "menu buttons OK / BACK (hold Backspace 2 s = gauges)"),
         ("H", "show / hide this help"),
         ("Esc / Q", "quit"),
     ]

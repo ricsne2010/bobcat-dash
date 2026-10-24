@@ -13,6 +13,8 @@ import argparse
 import logging
 import math
 import os
+import subprocess
+import sys
 import time
 
 try:
@@ -24,13 +26,22 @@ import pygame
 import pygame.gfxdraw
 
 from audio import Alerts
+from buttons import Buttons
 from cooldown import COOLING, DONE, IDLE_NEEDED, CoolDown
-from hourmeter import HourMeter, set_hours_cli
+from events import EventLog
+from fan import PodFan
+from hourmeter import HourMeter, data_dir, set_hours_cli
+from maintcode import MaintCode, boot_reset, reset_cli as reset_code_cli
 from pihealth import PiHealth
 from starter import StarterGuard
 from tilt import TiltSensor, TiltStatus, zero_cli
+from usage import UsageLog
+from usb import UsbStick
 from temps import TempSensors, TempStatus, list_cli as temps_cli
 from power import COUNTDOWN, ON, SHUTDOWN, PowerManager
+from screens import Screens
+from service import Service
+from servicemode import ServiceMode
 from sensors import calibrate, light_inputs, make_sensors
 from version import BUILD_DATE, VERSION
 
@@ -216,7 +227,8 @@ class Splash:
         """(Re)load the picture. The simulator calls this at every simulated boot, so a new
         splash picture shows up without restarting it.
         With a caption (the default), the bottom of the screen is kept for two lines of text,
-        "Bobcat Custom Display" and the version + build date, and the picture fits above them."""
+        the system's name ([splash] caption: "System Status, Operations, and Maintenance System") and the version +
+        build date, and the picture fits above them. A caption too wide for the screen is set smaller to fit."""
         screen, cfg, base_dir = self.screen, self.cfg, self.base_dir
         sc = cfg.get("splash", {})
         self.seconds = sc.get("seconds", 3.0) if sc.get("enabled", True) else 0.0
@@ -233,7 +245,7 @@ class Splash:
             return
         W, H = screen.get_size()
         k = min(W / DESIGN_W, H / DESIGN_H)
-        title = sc.get("caption", "Bobcat Custom Display")
+        title = sc.get("caption", "System Status, Operations, and Maintenance System")
         band = round(112 * k) if title else 0            # caption strip under the picture
         mode = sc.get("fit", "contain")
         scale = (max if mode == "cover" else min)(W / img.get_width(), (H - band) / img.get_height())
@@ -254,6 +266,9 @@ class Splash:
             fg, dim = ((20, 24, 30), (80, 88, 100)) if light_bg else (TEXT, DIM)
             f1, f2 = pygame.font.Font(None, round(46 * k)), pygame.font.Font(None, round(30 * k))
             t1 = f1.render(title, True, fg)
+            if t1.get_width() > W - round(40 * k):            # long name on a narrow screen: smaller, to fit
+                t1 = pygame.transform.smoothscale(t1, (W - round(40 * k),
+                                                       round(t1.get_height() * (W - round(40 * k)) / t1.get_width())))
             t2 = f2.render(f"Version {VERSION}   \u00b7   Built {BUILD_DATE}", True, dim)
             y = H - band + (band - t1.get_height() - t2.get_height() - round(8 * k)) // 2
             self.surface.blit(t1, t1.get_rect(midtop=(W // 2, y)))
@@ -289,10 +304,31 @@ def flat_states(st):
     return out
 
 
+EVENT_LABELS = {"volts": "BATTERY", "rpm": "ENGINE RPM", "fuel": "FUEL", "pi_temp": "PI TEMP",
+                "pi_5v": "PI SUPPLY", "tilt": "MACHINE ANGLE", "box_temp": "E-BOX TEMP"}
+
+
+def event_states(st, cfg):
+    """{source: (state, detail)} for the alarm history, and {source: name} to show for it."""
+    out = {"volts": st["volts"], "rpm": st["rpm"], "fuel": st["fuel"]}
+    labels = dict(EVENT_LABELS)
+    for name, pair in st["warnings"].items():
+        out[name] = pair
+        labels[name] = " ".join(cfg["warnings"][name]["label"].split())     # tile labels have line breaks
+    for src, label in st.get("system", []):
+        out[src] = (WARN, label)
+    if st.get("tilt"):
+        out["tilt"] = (st["tilt"]["state"], st["tilt"]["text"])
+    if st.get("temps"):
+        out["box_temp"] = st["temps"]["box"]
+    return out, labels
+
+
 # ---------------------------------------------------------------- drawing
 
 class Dash:
     def __init__(self, screen, cfg):
+        self.name = cfg["display"].get("name", "S.S.O.M.S")     # top-left of the header
         self.screen = screen
         self.cfg = cfg
         w, h = screen.get_size()
@@ -309,6 +345,7 @@ class Dash:
         # in the RPM panel (the original layout). Simulator key J switches between them.
         self.light_style = lc.get("display", "icons") if lc.get("enabled") else "icons"
         self.tilt_on = cfg.get("tilt", {}).get("enabled", True)
+        self.service_due = False   # an item on the service schedule is due: small pill in the header
 
     def R(self, x, y, w, h):
         return pygame.Rect(round(x * self.sx), round(y * self.sy), round(w * self.sx), round(h * self.sy))
@@ -368,12 +405,12 @@ class Dash:
             self.draw_tach(self.R(12, 66, 492, 500), r["rpm"], *st["rpm"], note=st.get("cooldown"))
             self.draw_batt_fuel(self.R(516, 66, 496, 184), r, st)
             self.draw_tilt(self.R(516, 262, 496, 304), st.get("tilt"), flash, lamp_test)
-            wy, wh = 578, 178
+            wy, wh = 578, 130   # the menu bar (screens + buttons) runs along the bottom, from y 716
         else:                   # the original layout
             self.draw_tach(self.R(12, 66, 492, 420), r["rpm"], *st["rpm"], note=st.get("cooldown"))
             self.draw_volts(self.R(516, 66, 496, 204), r["volts"], *st["volts"], st["running"])
             self.draw_fuel(self.R(516, 282, 496, 204), r["fuel_pct"], *st["fuel"])
-            wy, wh = 498, 258
+            wy, wh = 498, 210
         if not tiles:
             self.draw_lights(r.get("lights") or {}, lamp_test)
 
@@ -499,7 +536,7 @@ class Dash:
     def draw_header(self, st, lamp_test, flash):
         rect = self.R(0, 0, DESIGN_W, 56)
         pygame.draw.rect(self.screen, HEADER, rect)
-        logo = self.text("BOBCAT", 44, TEXT, midleft=(rect.x + self.px(20), rect.centery))
+        logo = self.text(self.name, 44, TEXT, midleft=(rect.x + self.px(20), rect.centery))
         left_edge = logo.right
         temps = st.get("temps")
         if temps:                       # breakout box temperature (pill when hot) and the ambient probes
@@ -516,19 +553,8 @@ class Dash:
             left_edge = self.text(self.sim_text, 24, AMBER, max_w=self.px(250),
                                   midleft=(left_edge + self.px(14), rect.centery)).right
 
-        # the Pi's own warnings sit left of the status pill; the engine text moves left to make room
-        free_right = rect.right - self.px(170)
-        if not lamp_test:
-            for _, label in reversed(st.get("system", [])):
-                free_right = self.pill(label, 26, AMBER, midright=(free_right, rect.centery)).left - self.px(10)
-        words, color = (("ENGINE RUNNING", GREEN) if st["running"] else st["header_note"] if st.get("header_note") else
-                        ("CRANKING", AMBER) if st.get("cranking") else
-                        ("ENGINE OFF", DIM) if st["off"] else ("ENGINE ?", AMBER))
-        half = self.font(38).size(words)[0] / 2
-        cx = min(rect.centerx, free_right - self.px(14) - half)
-        cx = max(cx, left_edge + self.px(14) + half)              # never under the logo / simulator text
-        self.text(words, 38, color, max_w=int(free_right - left_edge - self.px(28)), center=(cx, rect.centery))
-
+        # the status pill on the right (measured first), the Pi's own warnings left of it, then the engine
+        # text, which moves left / shrinks to make room
         states = [st["volts"][0], st["rpm"][0], st["fuel"][0]] + [s for s, _ in st["warnings"].values()]
         states += [WARN for _ in st.get("system", [])]
         if st.get("tilt"):
@@ -536,19 +562,33 @@ class Dash:
         if st.get("temps"):
             states.append(st["temps"]["box"][0])
         alarms, warns = states.count(ALARM), states.count(WARN) + states.count(UNKNOWN)
-        right = (rect.right - self.px(16), rect.centery)
         if lamp_test:
-            self.pill("LAMP TEST", 34, AMBER, midright=right)
+            status = ("LAMP TEST", AMBER)
         elif alarms:
             text = f"{alarms} ALARM{'S' if alarms > 1 else ''}"
-            if self.muted:
-                self.pill(text + " - SILENCED", 34, RED, midright=right)
-            else:
-                self.pill(text, 34, RED if flash else RED_DARK, midright=right)
+            status = (text + " - SILENCED", RED) if self.muted else (text, RED if flash else RED_DARK)
         elif warns:
-            self.pill(f"CHECK {warns}", 34, AMBER, midright=right)
+            status = (f"CHECK {warns}", AMBER)
         else:
-            self.pill("ALL OK", 34, GREEN, midright=right)
+            status = ("ALL OK", GREEN)
+        right = (rect.right - self.px(16), rect.centery)
+        pill_w = self.font(34).size(status[0])[0] + self.px(30)
+        free_right = right[0] - pill_w - self.px(14)
+        if not lamp_test:
+            for _, label in reversed(st.get("system", [])):
+                free_right = self.pill(label, 26, AMBER, midright=(free_right, rect.centery)).left - self.px(10)
+            if self.service_due:
+                free_right = self.pill("SERVICE DUE", 26, TRACK, midright=(free_right, rect.centery)).left - self.px(10)
+        words, color = (("ENGINE RUNNING", GREEN) if st["running"] else st["header_note"] if st.get("header_note") else
+                        ("CRANKING", AMBER) if st.get("cranking") else
+                        ("ENGINE OFF", DIM) if st["off"] else ("ENGINE ?", AMBER))
+        room = int(free_right - left_edge - self.px(28))
+        half = min(self.font(38).size(words)[0], room) / 2               # it shrinks to fit the room
+        cx = min(rect.centerx, free_right - self.px(14) - half)
+        cx = max(cx, left_edge + self.px(14) + half)              # never under the logo / simulator text
+        self.text(words, 38, color, max_w=room, center=(cx, rect.centery))
+
+        self.pill(status[0], 34, status[1], midright=right)
 
     def draw_tach(self, rect, rpm, state, label, note=None):
         """note: (text, colour) shown in the status pill instead of plain RUNNING (the cool-down)."""
@@ -876,11 +916,17 @@ class Dash:
             pygame.draw.rect(self.screen, lit if on else PANEL, rect, border_radius=radius)
             pygame.draw.rect(self.screen, lit if on else TRACK, rect, width=self.px(4), border_radius=radius)
             ink = BG if on else GRAY
-            box = pygame.Rect(0, 0, self.px(92), self.px(54))
-            box.midleft = (rect.x + self.px(26), rect.centery)
-            {"front": self._icon_front, "rear": self._icon_rear}.get(name, self._icon_work)(box, ink, lw=6)
+            compact = height < 90               # short tiles (under the menu bar): icon + one line
+            box = pygame.Rect(0, 0, self.px(64 if compact else 92), self.px(36 if compact else 54))
+            box.midleft = (rect.x + self.px(20 if compact else 26), rect.centery)
+            {"front": self._icon_front, "rear": self._icon_rear}.get(name, self._icon_work)(box, ink, lw=5 if compact else 6)
             tx = box.right + (rect.right - box.right) // 2
-            self.text(sc.get("label", name.upper()), 40, ink, max_w=rect.right - box.right - self.px(20),
+            label = sc.get("label", name.upper())
+            if compact:
+                self.text(f"{label}  {'ON' if on else 'OFF'}", 34, ink, max_w=rect.right - box.right - self.px(20),
+                          center=(tx, rect.centery))
+                continue
+            self.text(label, 40, ink, max_w=rect.right - box.right - self.px(20),
                       center=(tx, rect.centery - self.px(20)))
             self.text("ON" if on else "OFF", 44 if on else 34, ink, center=(tx, rect.centery + self.px(22)))
 
@@ -904,6 +950,46 @@ def save_boot_splash(cfg, here, out):
     return 0
 
 
+def journal():
+    """The dash's own log (systemd journal) for the downloads; "" when there's none (the simulator)."""
+    try:
+        r = subprocess.run(["journalctl", "-u", "bobcat-dash", "-n", "5000", "--no-pager", "-o", "short-iso"],
+                           capture_output=True, text=True, timeout=20)
+        return r.stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def live_status(st, readings, cfg, hours, service, pi_temp, fan, wifi, power_state):
+    """What the service web page's Status shows (web.py /api/status)."""
+    def tile(name, value, state="ok"):
+        return [name, value, state]
+    v, f = readings.get("volts"), readings.get("fuel_pct")
+    tiles = [tile("Engine", f"{readings.get('rpm') or 0:.0f} rpm" if st["running"] else "off", st["rpm"][0]),
+             tile("Battery", f"{v:.1f} V" if v is not None else "--", st["volts"][0]),
+             tile("Fuel", f"{f:.0f} %" if f is not None else "--", st["fuel"][0]),
+             tile("Engine hours", f"{hours:.1f}")]
+    temps = st.get("temps")
+    if temps:
+        tiles.append(tile("E-box temp", temps["box"][1].replace("E-BOX HOT ", "").replace("E-BOX ", ""), temps["box"][0]))
+        for a in temps.get("ambient", []):
+            name, _, val = a.partition(" ")
+            tiles.append(tile(name.title(), val))
+    if st.get("tilt"):
+        tiles.append(tile("Machine angle", st["tilt"]["text"], st["tilt"]["state"]))
+    ev_states, labels = event_states(st, cfg)
+    word = {"warn": "WARNING", "alarm": "ALARM", "unknown": "NO SIGNAL"}
+    active = [[labels.get(k, k.upper()), s, d or "", word[s]] for k, (s, d) in ev_states.items() if s in word]
+    active.sort(key=lambda a: a[1] != "alarm")
+    due = []
+    for it, state, left, days in service.status(hours):
+        if state != "ok":
+            due.append([it["name"], "due" if state == "due" else "soon",
+                        f"overdue {-left:.1f} h" if left <= 0 else f"in {left:.1f} h"])
+    return {"tiles": tiles, "active": active, "due": due, "running": bool(st["running"]),
+            "pi": [["CPU", pi_temp], ["Pod fan", fan], ["Power", power_state]], "wifi": wifi}
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description="Bobcat skid steer digital dash")
@@ -911,7 +997,7 @@ def main():
     ap.add_argument("--sim", action="store_true", help="simulated sensors (no hardware needed)")
     ap.add_argument("--windowed", action="store_true", help="run in a 1024x768 window")
     ap.add_argument("--calibrate", action="store_true", help="print raw sensor readings and exit")
-    ap.add_argument("--version", action="version", version=f"Bobcat Custom Display {VERSION} (built {BUILD_DATE})")
+    ap.add_argument("--version", action="version", version=f"S.S.O.M.S {VERSION} (built {BUILD_DATE})")
     ap.add_argument("--boot-splash", nargs="?", const=os.path.join(here, "splash", "boot-splash.png"), metavar="PNG",
                     help="save the splash screen (picture + caption) at the display size, for the Pi's boot splash")
     ap.add_argument("--temps", action="store_true", help="list the temperature sensors (IDs, readings, roles)")
@@ -919,12 +1005,15 @@ def main():
     ap.add_argument("--force", action="store_true", help="with --zero-tilt: save even if it reads >5 deg off level or moving")
     ap.add_argument("--set-hours", type=float, metavar="HOURS",
                     help="change the engine hour meter total (asks for confirmation; the dash must be stopped)")
+    ap.add_argument("--reset-code", action="store_true", help="forget the maintenance code (make a new one at the dash)")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     with open(args.config, "rb") as f:
         cfg = tomllib.load(f)
 
+    if args.reset_code:
+        raise SystemExit(reset_code_cli(data_dir(cfg, args.sim)))
     if args.set_hours is not None:
         raise SystemExit(set_hours_cli(cfg, args.set_hours, sim=args.sim))
     if args.calibrate:
@@ -934,7 +1023,7 @@ def main():
         raise SystemExit(zero_cli(cfg, force=args.force))
     if args.temps:
         raise SystemExit(temps_cli(cfg))
-    log.info("Bobcat Custom Display %s (built %s)", VERSION, BUILD_DATE)
+    log.info("S.S.O.M.S (System Status, Operations, and Maintenance System) %s (built %s)", VERSION, BUILD_DATE)
     if args.boot_splash:
         raise SystemExit(save_boot_splash(cfg, here, args.boot_splash))
 
@@ -946,7 +1035,7 @@ def main():
     else:
         screen = pygame.display.set_mode((d["width"], d["height"]), pygame.FULLSCREEN)
         pygame.mouse.set_visible(False)
-    pygame.display.set_caption("Bobcat Dash")
+    pygame.display.set_caption(cfg["display"].get("name", "S.S.O.M.S"))
 
     sensors = make_sensors(cfg, sim=args.sim)
     sensors.start()
@@ -959,12 +1048,41 @@ def main():
     dash.hourmeter = hourmeter
     cooldown = CoolDown(cfg)
     health = PiHealth(cfg, sim=args.sim)
+    fan = PodFan(cfg, sim=args.sim)
     starter = StarterGuard(cfg)
     tilt_status = TiltStatus(cfg)
     tilt_sensor = None if args.sim or not tilt_status.enabled else TiltSensor(cfg)
     temp_status = TempStatus(cfg)
     temp_sensors = None if args.sim or not temp_status.enabled else TempSensors(cfg)
     power = PowerManager(cfg, sim=args.sim, start_off=args.sim)
+    buttons = Buttons(cfg, sim=args.sim)
+    screens = Screens(cfg)
+    events = EventLog(cfg, hourmeter.dir)
+    service = Service(cfg, hourmeter.dir)
+    service.baseline(hourmeter.hours)
+    usage = UsageLog(cfg, hourmeter.dir)
+    svcmode = ServiceMode(cfg, hourmeter.dir, sim=args.sim)
+    usb = UsbStick(cfg, hourmeter.dir, sim=args.sim)
+    code_reset = boot_reset(hourmeter.dir, sim=args.sim)
+    code = MaintCode(cfg, hourmeter.dir)
+    if code_reset:
+        events.note("MAINTENANCE CODE", "warn", "forgotten (reset-code file on the SD card)", hourmeter.hours)
+    live = [{"tiles": [], "active": [], "due": [], "running": False, "pi": [], "wifi": ""}]
+    restart = []
+
+    def request_restart():
+        svcmode.restart_requested = True
+        restart.append(True)
+    export_ctx = {"usage": usage, "events": events, "service": service, "cfg": cfg, "version": VERSION,
+                  "data_dir": hourmeter.dir, "repo": here, "hours": lambda: hourmeter.hours, "live": lambda: live[0],
+                  "touch": svcmode.touch, "wifi_text": lambda: "Service Wi-Fi " + svcmode.describe(time.monotonic()),
+                  "wifi_off": lambda: svcmode.turn_off("from the web page"), "wifi_extend": svcmode.extend,
+                  "restart": request_restart,
+                  "journal": journal if not args.sim else (lambda: ""), "code": code}
+    svcmode.web_ctx = export_ctx
+    usb.export_ctx, usb.repo, usb.restart = export_ctx, here, request_restart
+    last_live = 0.0
+    announced = False                   # the service pop-up: once per key-on, after the lamp test
     power_state = power.state           # the simulator starts as a parked machine: key off, powered down
     splash = Splash(screen, cfg, here)
     clock = pygame.time.Clock()
@@ -981,13 +1099,17 @@ def main():
     low_since = None
 
     try:
-        while True:
+        while not restart:
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     return
                 if e.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN):
                     alerts.silence()            # tap the screen to silence
+                if e.type == pygame.KEYUP:
+                    buttons.sim_key(pygame.key.name(e.key), False, time.monotonic())
                 if e.type == pygame.KEYDOWN:
+                    if buttons.sim_key(pygame.key.name(e.key), True, time.monotonic()):
+                        continue
                     if e.key in (pygame.K_ESCAPE, pygame.K_q):
                         return
                     if e.key == pygame.K_h:
@@ -1020,8 +1142,13 @@ def main():
                 boot, chimed = now, False
                 t0 = boot + splash.hold()
                 alerts.startup_test(t0)
+                announced = False
+                service.session_later.clear()             # "remind me at the next start"
             if was == ON and power_state == COUNTDOWN:
                 alerts.keyoff()                           # soft falling chime: the dash is shutting down
+                events.close_all(now)
+                usage.save(now)
+                screens.go_home()
             lights_on = []
             pi_still_on = power_state == COUNTDOWN or (power_state == SHUTDOWN and not args.sim)
             if pi_still_on and cfg.get("lights", {}).get("left_on_warning", True):
@@ -1029,7 +1156,11 @@ def main():
                 lights_on = [inputs[n].get("label", n.upper()) for n, on in (readings.get("lights") or {}).items() if on]
                 if lights_on:
                     alerts.lights_reminder(now)
+            svcmode.update(now, power_state == ON)
+            if power_state != ON:
+                code.unlocked = False             # the code is good until key-off ...
             if args.sim and power_state == SHUTDOWN:      # simulated power off: blank screen, silence
+                usage.update(now, False, False, False, None)
                 alerts.update({}, now)
                 hourmeter.update(False, now)
                 dash.draw_power(power_state, 0, None, True)
@@ -1053,6 +1184,8 @@ def main():
                           crank_ago=now - last_crank if last_crank is not None else None)
             if st["cranking"]:
                 last_crank = now
+            if st["running"] or st["cranking"]:
+                code.unlocked = False             # ... or until the engine starts
             # starter guard: REST STARTER past the crank limit, then a cooling countdown
             guard, beep = starter.update(st["cranking"], st["running"], now)
             if guard and st["rpm"][0] in (IDLE, STARTING):
@@ -1082,10 +1215,11 @@ def main():
                 running_since = None
 
             st["system"] = health.status(now)
+            fan.update(health.sim_temp if args.sim else health.temp, force=power_state != ON)
             st["tilt"] = tilt_status.update(readings.get("tilt") if args.sim else
                                             (tilt_sensor.angles() if tilt_sensor else None), now)
-            st["temps"] = temp_status.update(readings.get("temps") if args.sim else
-                                             (temp_sensors.snapshot() if temp_sensors else None))
+            temp_snap = readings.get("temps") if args.sim else (temp_sensors.snapshot() if temp_sensors else None)
+            st["temps"] = temp_status.update(temp_snap)
             lamp_test = now < t0 + d.get("lamp_test_seconds", 0)      # includes the splash time
             if lamp_test:
                 alerts.update({}, now)          # only the test chirp
@@ -1096,14 +1230,53 @@ def main():
                     chimed = True
                 alerts.update(flat_states(st), now)
             hourmeter.update(st["running"], now)
+            usage.update(now, power_state == ON, st["running"] and not st["tach_fault"], st["cranking"],
+                         readings["rpm"], readings["volts"], temp_snap, health.sim_temp if args.sim else health.temp,
+                         hourmeter.hours, cool_pending=bool(cd and cd[0] in (COOLING, IDLE_NEEDED)),
+                         speed=hourmeter.sim_speed)
+            usb.update(now, power_state == ON and not lamp_test, st["running"] or st["cranking"])
             if power_state != ON:
                 alerts.update({}, now)          # no horn or tones while shutting down
+
+            # alarm history, menu buttons, service reminders
+            new_alarm = False
+            if power_state == ON and not lamp_test:
+                ev_states, ev_labels = event_states(st, cfg)
+                new_alarm = bool(events.update(ev_states, ev_labels, hourmeter.hours, now))
+            ctx = {"service": service, "events": events, "hours": hourmeter.hours, "st": st, "readings": readings,
+                   "now": now, "data_dir": hourmeter.dir, "pi_temp": health.describe(), "version": VERSION,
+                   "build": BUILD_DATE, "fan": fan.describe(), "svcmode": svcmode, "usb": usb, "code": code,
+                   "save_errors": events.save_error or service.save_error or usage.save_error or ""}
+            if now - last_live >= 1.0:
+                last_live = now
+                live[0] = live_status(st, readings, cfg, hourmeter.hours, service, health.describe(), fan.describe(),
+                                      "Service Wi-Fi " + svcmode.describe(now),
+                                      {ON: "key on", COUNTDOWN: "key off, shutting down"}.get(power_state, "off"))
+            # an alarm nobody has silenced yet locks the menus (gauges only) until SILENCE is pressed
+            locked = (power_state == ON and not lamp_test and not alerts.muted
+                      and ALARM in flat_states(st).values())
+            if locked and not screens.locked:
+                screens.go_home()
+            screens.locked = locked
+            for b in buttons.poll():
+                if power_state == ON:
+                    screens.press(b, ctx, now)
+            screens.tick(now, new_alarm, st["running"], ctx)
+            if (service.enabled and not announced and power_state == ON and chimed
+                    and not st["running"] and not st["cranking"]):
+                announced = True
+                due = service.to_announce(hourmeter.hours)
+                if due:
+                    screens.announce(due, now)
+                    service.shown(due)
+            dash.service_due = service.enabled and service.any_due(hourmeter.hours)
             dash.muted = alerts.muted
             if hasattr(sensors, "status"):
                 dash.sim_text = (sensors.status() + ("  HORN" if alerts.horn_on else "")
                                  + ("  TIME x60" if hourmeter.sim_speed > 1 else ""))
 
             dash.draw(readings, st, now, lamp_test)
+            screens.draw(dash, ctx)
             splash.draw(screen, now - boot)
             if power_state != ON:
                 dash.draw_power(power_state, power.remaining(now), power.error, args.sim, lights_on)
@@ -1115,10 +1288,19 @@ def main():
         if temp_sensors:
             temp_sensors.close()
         health.close()
+        fan.close()
+        events.close_all(time.monotonic())
+        usage.save()
+        svcmode.close()
+        buttons.close()
         alerts.close()
         hourmeter.close()
         sensors.stop()
         pygame.quit()
+    if restart:                         # new software installed (or a restart asked for): start it afresh
+        log.info("restarting the dash")
+        os.chdir(here)
+        os.execv(sys.executable, [sys.executable, os.path.join(here, "dash.py")] + sys.argv[1:])
 
 
 if __name__ == "__main__":

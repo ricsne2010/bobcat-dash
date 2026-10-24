@@ -1,0 +1,32 @@
+#!/bin/bash
+# Bobcat dash: the SERVICE WI-FI hotspot (run by the dash through sudo; see tools/bobcat-dash-sudoers).
+#   bobcat-dash-wifi on SSID PASSWORD    make and start the hotspot (NetworkManager, WPA2, 2.4 GHz)
+#   bobcat-dash-wifi off                 stop and remove it (NetworkManager goes back to your normal Wi-Fi)
+#   bobcat-dash-wifi status              prints on / off
+set -eu
+CON=bobcat-service
+IFACE=wlan0
+case "${1:-}" in
+    on)
+        [[ "${2:-}" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || { echo "bad network name" >&2; exit 2; }
+        [[ "${3:-}" =~ ^[A-Za-z0-9]{8,63}$ ]] || { echo "bad password (8-63 letters/digits)" >&2; exit 2; }
+        nmcli radio wifi on
+        nmcli con delete "$CON" >/dev/null 2>&1 || true
+        nmcli con add type wifi ifname "$IFACE" con-name "$CON" autoconnect no ssid "$2" \
+            802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared ipv6.method disabled \
+            wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$3" wifi-sec.proto rsn wifi-sec.pairwise ccmp \
+            wifi-sec.group ccmp wifi-sec.pmf disable >/dev/null
+        nmcli con up "$CON" >/dev/null
+        echo on
+        ;;
+    off)
+        nmcli con down "$CON" >/dev/null 2>&1 || true
+        nmcli con delete "$CON" >/dev/null 2>&1 || true
+        echo off
+        ;;
+    status)
+        if nmcli -t -f NAME con show --active | grep -qx "$CON"; then echo on; else echo off; fi
+        ;;
+    *)
+        echo "usage: $0 on SSID PASSWORD | off | status" >&2; exit 2 ;;
+esac

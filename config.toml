@@ -1,4 +1,4 @@
-# Bobcat dash configuration.
+# S.S.O.M.S (System Status, Operations, and Maintenance System) configuration: Bobcat M700.
 # After editing on the Pi:  sudo systemctl restart bobcat-dash
 
 [display]
@@ -7,6 +7,7 @@ height = 0
 fullscreen = true
 fps = 20
 lamp_test_seconds = 2.0   # all warning tiles flash red at startup, like a bulb check
+name = "S.S.O.M.S"        # top-left of the header: System Status, Operations, and Maintenance System
 
 [splash]                  # start-up picture, then it fades into the dash
 enabled = true
@@ -15,7 +16,7 @@ seconds = 3.0             # how long the picture stays up once the dash has star
 fade_seconds = 0.6
 fit = "contain"           # contain = whole picture visible, cover = fill the screen (trims edges)
 background = "auto"       # border colour around a "contain" picture: "auto" (from its edges) or "#000000"
-caption = "Bobcat Custom Display"   # shown under the picture with the version and build date; "" = no caption
+caption = "System Status, Operations, and Maintenance System"   # shown under the picture with the version and build date; "" = no caption
 sim_boot_seconds = 3.0    # simulator only: extra time on the picture, standing in for the Pi booting
 
 [audio]                   # speaker: startup chime + in-cab alert tones
@@ -47,6 +48,26 @@ sources = ["oil_pressure", "hyd_filter", "hyd_temp", "rpm", "volts", "tilt"]
 
 [silence_button]          # momentary push button to ground
 gpio = 5
+
+[buttons]                 # the 4 menu buttons (breakout board rev 2.9, BUTTONS plug), each to GND
+enabled = true
+left_gpio = 8             # Pi pin 24
+right_gpio = 7            # Pi pin 26
+ok_gpio = 20              # Pi pin 38
+back_gpio = 10            # Pi pin 19
+hold_seconds = 2.0        # hold BACK this long: straight back to the gauges
+home_after_s = 120        # back to the gauges after this long without a button press
+
+[fan]                     # button pod exhaust fan (breakout board rev 2.9, J17 pins 7-8, Q5)
+enabled = true
+gpio = 11                 # Pi pin 23
+on_c = 55.0               # Pi CPU temperature: fan on at or above this...
+off_c = 48.0              # ...and off again below this (runs during key-off shutdown too)
+
+[history]                 # alarm & warning history (HISTORY screen), saved in the hour meter's data folder
+enabled = true
+min_seconds = 2.0         # shorter blips aren't recorded
+max_events = 500          # oldest dropped beyond this
 
 [power]                   # key-off shutdown (breakout board rev 2.0 power-hold circuit)
 # The board keeps the Pi powered after key-off. The dash saves the hours and shuts the Pi
@@ -107,7 +128,7 @@ hysteresis = 1.0          # degrees back inside a limit before the warning clear
 filter_seconds = 3.0      # how slowly gravity corrects the gyro: longer = bumps move it less
 
 [temperature]             # DS18B20 sensors on the 1-Wire bus (GPIO 4; breakout board rev 2.7)
-# BOX = the sensor on the breakout board (the box's air). Probes = waterproof DS18B20s plugged into the board's
+# E-BOX = the sensor on the breakout board (the electronics box's air). Probes = waterproof DS18B20s plugged into the board's
 # TEMP PROBE connector (several can share it): e.g. one in the cab, one outside. Shown in the header.
 # Pi setup, once: add  dtoverlay=w1-gpio  to /boot/firmware/config.txt and reboot.
 # Find the IDs:  python3 dash.py --temps   (hold a sensor in your fingers to see which one warms up)
@@ -116,8 +137,8 @@ units = "F"               # "F" or "C" on screen (the limits below are always in
 board_id = ""             # the board's own sensor, e.g. "28-0000012345ab". "" = worked out when it's the only one
 probes = []               # e.g. [ { id = "28-00000abcdef1", name = "OUT" }, { id = "28-00000abcdef2", name = "CAB" } ]
 ambient = "each"          # "each" = every probe by name, "average" = one AMB reading (their average)
-box_warn = 50.0           # C (122 F): amber BOX HOT, one beep
-box_alarm = 65.0          # C (149 F): red BOX HOT, alarm tone (no horn)
+box_warn = 50.0           # C (122 F): amber E-BOX HOT, one beep
+box_alarm = 65.0          # C (149 F): red E-BOX HOT, alarm tone (no horn)
 read_every = 5.0          # seconds between readings
 
 [pi_health]               # the Pi's own warnings, shown in the header (amber, one beep)
@@ -275,3 +296,116 @@ alarm_text = "HOT"
 on_delay = 1.0
 off_delay = 2.0
 fault_delay = 1.0
+
+# ---------------------------------------------------------------- service reminders (SERVICE screen)
+# From the Bobcat 700 Operation & Maintenance Manual (service schedule, page 16; oil chart, page 14;
+# hydraulic fluid, page 22). The manual says to SHORTEN intervals in extremely hot, cold, dusty or
+# corrosive conditions. Change hours here; the climate is picked on the Service screen.
+[service]
+enabled = true
+remind_within_hours = 5   # pop up this many engine hours before an item is due...
+short_interval_hours = 10 # ...but items due this often or more (the daily checks)...
+remind_short_within_hours = 2   # ...only this many hours before
+remind_within_days = 14   # ...or days, for items with a yearly limit
+snooze_hours = 5          # "+5 HOURS" on the pop-up asks again after this many engine hours
+default_climate = "hot"   # until one is picked on the screen
+
+# Climates: the manual's engine oil chart. hours_by_climate on an item below uses these ids.
+[[service.climate]]
+id = "hot"
+label = "HOT - above 90 F"
+oil_grade = "SAE 30"
+[[service.climate]]
+id = "warm"
+label = "WARM - 40 to 90 F"
+oil_grade = "SAE 30"
+[[service.climate]]
+id = "cool"
+label = "COOL - 15 to 40 F"
+oil_grade = "SAE 20 / 20W"
+[[service.climate]]
+id = "cold"
+label = "COLD - 0 to 15 F"
+oil_grade = "SAE 10W"
+[[service.climate]]
+id = "arctic"
+label = "BELOW 0 F"
+oil_grade = "SAE 5W-20"
+
+[[service.item]]
+id = "daily"
+name = "DAILY CHECKS"
+hours = 10
+task = "Engine oil level. Empty the air cleaner dust cap. Clean the oil cooler grill and cooling fins. Tires. Grease all loader pivots."
+[[service.item]]
+id = "engine_oil"
+name = "ENGINE OIL CHANGE"
+hours = 50
+hours_by_climate = { hot = 25 }     # manual p.14: above 90 F change the oil every 25 h (filter every 50 h)
+task = "Drain and refill the engine oil: {oil_grade}. 4 qt with the filter changed, 3.5 qt without."
+[[service.item]]
+id = "oil_filter"
+name = "ENGINE OIL FILTER"
+hours = 50
+task = "Replace the spin-on oil filter (with an oil change)."
+[[service.item]]
+id = "fifty"
+name = "50-HOUR CHECKS"
+hours = 50
+task = "Hydrostatic fluid level. Distributor shaft: 3-5 drops of oil in the lube cup. Crankcase breather hose. Grease control levers and pedals. Drive chain play. Hydraulic tubes and hoses for leaks."
+[[service.item]]
+id = "spark_plugs"
+name = "SPARK PLUGS"
+hours = 200
+task = "Replace the spark plugs, gap 0.030 in."
+[[service.item]]
+id = "fuel_filter"
+name = "FUEL FILTER"
+hours = 200
+task = "Replace the engine fuel filter element."
+[[service.item]]
+id = "three_hundred"
+name = "COOLING FINS + STARTER"
+hours = 300
+task = "Remove the shrouding and clean the engine cooling fins. Remove, clean and service the starting motor."
+[[service.item]]
+id = "hyd_reservoir"
+name = "HYDRAULIC RESERVOIR"
+hours = 500
+days = 365
+task = "Drain condensation from the reservoir. Check the level, add as needed."
+[[service.item]]
+id = "hyd_filters"
+name = "HYDROSTATIC FILTERS"
+hours = 500
+days = 365
+task = "Replace the pressure filter (10 micron) and the suction filter (25 micron). Sooner if the FILT light stays on."
+[[service.item]]
+id = "thousand"
+name = "1000-HOUR SERVICE"
+hours = 1000
+task = "Compression check (clean carbon deposits if called for). Change the hydraulic / hydrostatic fluid."
+
+[usage]                   # usage recording for the performance reports (service web page, USB stick export)
+enabled = true
+# The machine works at full throttle (the governor holds the speed) and idles to warm up / cool down. In between
+# is part throttle: for warming a cold engine, pump priming or setting the timing; the reports flag a lot of it.
+idle_below_rpm = 1400     # below this the engine counts as idling
+full_throttle_rpm = 2600  # at or above this = full throttle (the VH4D pulls down from ~2950 under load)
+rpm_bin = 250             # the "time at each engine speed" chart: rpm per bar
+keep_days = 1100          # days kept (about 3 years)
+save_every_s = 60
+
+[service_mode]            # SERVICE WI-FI: SYSTEM screen > OK. The dash's own Wi-Fi and its service web page.
+enabled = true
+ssid = "SSOMS-BOBCAT-M700"   # the network name (letters, digits, - and _: no dots)
+password = ""             # "" = made up the first time, then kept (shown on the screen). Or 8+ letters/digits.
+minutes = 30              # on for this long, then off by itself (and always at key-off)
+extend_minutes = 30       # the web page's EXTEND button adds this much, as often as you like
+code_digits = 4           # the maintenance code (asked to turn the Wi-Fi on, and to install from a USB stick)
+code_tries = 3            # wrong codes in a row before it locks: 5 min, then 10, 20, ... (up to 2 h)
+port = 80                 # web page address: http://10.42.0.1 (the simulator uses http://localhost:8080)
+
+[usb]                     # USB stick: copies the reports and data to it, installs updates found on it
+enabled = true
+sim_dir = "~/bobcat-dash-data/simulator/usb-stick"   # simulator: this folder existing = a stick plugged in

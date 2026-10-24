@@ -1,6 +1,6 @@
-# Bobcat Digital Dash
+# S.S.O.M.S: System Status, Operations, and Maintenance System
 
-A full-screen gauge display for a 1978 Bobcat M700 skid steer (Wisconsin VH4D 4-cylinder gas engine,
+(The `bobcat-dash` project.) A full-screen gauge display for a 1978 Bobcat M700 skid steer (Wisconsin VH4D 4-cylinder gas engine,
 PerTronix electronic ignition), running on a Raspberry Pi.
 
 | Gauge / light | Sensor | Green | Amber | Red |
@@ -234,14 +234,14 @@ braking, bouncing and turning don't make the angle jump.
 
 ## Temperatures
 
-The header shows temperatures next to **BOBCAT**: the breakout box's air, then your probes.
+The header shows temperatures next to **BOBCAT**: the electronics box (E-box) air, then your probes.
 
 ```
-BOBCAT   BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING              ALL OK
+BOBCAT   E-BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING              ALL OK
 ```
 
-- **BOX** is the DS18B20 on the breakout board (rev 2.7): the air inside its enclosure. Above **50 °C
-  (122 °F)** it turns into an amber **BOX HOT** pill (one beep, counts in `CHECK`); above **65 °C (149 °F)** red
+- **E-BOX** (electronics box) is the DS18B20 on the breakout board (rev 2.7): the air inside its enclosure. Above **50 °C
+  (122 °F)** it turns into an amber **E-BOX HOT** pill (one beep, counts in `CHECK`); above **65 °C (149 °F)** red
   (alarm tone, no horn). The breakout board's own parts are rated well above that; the limits warn you that
   the box is cooking (no ventilation, direct sun) before anything else in it suffers. If the board sensor
   stops answering it shows grey `BOX --` (and the connection-lost sound).
@@ -253,7 +253,7 @@ BOBCAT   BOX 100°F   CAB 92°F   OUT 104°F          ENGINE RUNNING            
   `python3 dash.py --temps` lists every sensor with its ID and reading. Hold one in your fingers for 20 s and
   run it again to see which is which, then put the IDs in `[temperature]`: `board_id` and the `probes` list
   with names. With only the board sensor fitted, nothing needs setting.
-- `units = "F"` (or `"C"`) sets what's shown; the BOX limits in `config.toml` are in °C.
+- `units = "F"` (or `"C"`) sets what's shown; the E-BOX limits in `config.toml` are in °C.
 - Simulator: **=** steps the box through normal, warm, hot and sensor missing; CAB and OUT are simulated.
 
 ## Pi health warnings
@@ -515,7 +515,7 @@ python3 tools/fit_splash.py ~/Pictures/my_logo.jpg --size 1024x768 --mode cover 
    `video=` setting above. `contain` (default) keeps the whole picture and fills the leftover space with
    a colour taken from the picture's edge; `cover` fills the screen and trims whatever doesn't fit.
    That one file is enough for the dash: it shows it at start-up, settings in `[splash]` in `config.toml`.
-   Under the picture the dash writes **Bobcat Custom Display** and the software version and build date
+   Under the picture the dash writes **System Status, Operations, and Maintenance System** (S.S.O.M.S) and the software version and build date
    (`caption` in `[splash]`; the picture is fitted above that text).
 
 2. **Make the boot version of the screen** (picture + text, exactly as the dash shows it):
@@ -747,6 +747,95 @@ gzip ~/bobcat-dash-backup.img                   # optional: much smaller
 The image holds your Wi-Fi password: keep it private. The engine hours live in `~/bobcat-dash-data`; copy that
 folder off now and then too.
 
+## Screens, history and service reminders
+
+Four menu buttons (◀ ▶ OK BACK, breakout board rev 2.9 `BUTTONS` plug; in the simulator `;` `'` Enter
+Backspace, and a USB keyboard works the same) move between four screens. The gauges are home.
+
+| Screen | Shows |
+|---|---|
+| **GAUGES** | The dash, as always. |
+| **HISTORY** | Every alarm, warning and NO SIGNAL that lasted 2 s or more: date and time, engine hours, what, how long. OK on a line for the details and **CLEAR THIS / CLEAR ALL** (asks first). Clearing only takes alarms off this list: the first line, **ALL ALARMS (archive)**, always shows everything ever recorded, cleared ones marked. Kept through power-off (last 500). |
+| **SERVICE** | The maintenance schedule from the Bobcat 700 manual, by engine hours (hydraulic items also yearly): what's next and when. The first line is the **CLIMATE** setting. |
+| **SYSTEM** | Engine hours, battery, fuel, every sensor's status, box and outside temperatures, the Pi's temperature and warnings, clock, network, SD card space, saving status, software version. |
+
+- **◀ ▶** change screen; on HISTORY and SERVICE, **OK** steps into the list, then ◀ ▶ move and OK opens a line.
+  **BACK** steps back out; **hold BACK 2 s** to jump to the gauges from anywhere.
+- **Safety:** a new red alarm always brings the gauges back and **locks the menu buttons** until the alarm is
+  acknowledged with **SILENCE** (the menu bar says so in red), so nobody changes screens by accident with the
+  machine in trouble. After 2 minutes without a press the dash goes back to the gauges anyway. Service pop-ups never open with the engine running; while it runs, a due item
+  only shows a small `SERVICE DUE` in the header.
+- **Service pop-up at key-on** (engine not running): each item that's due, or coming up (within 5 engine hours;
+  within 2 h for the 10-hour daily checks), with **DETAILS** (the job, step by step), **MARK DONE** (asks to confirm; records the hours and date),
+  **LATER** (ask again at the next key-on), **+5 HOURS**, and **COMPLETED** (when it was done before).
+- **Climate:** the manual changes the engine oil interval in heat (every **25 h above 90 °F** instead of 50 h)
+  and the oil grade with temperature (SAE 30 down to 5W-20). Pick the climate on the SERVICE screen (OK on
+  the CLIMATE line, ◀ ▶, OK); only those items change. The schedule itself is `[service]` in `config.toml`.
+- **Dates** need the Pi's clock: on a Pi 5 fit the **RTC battery** (Raspberry Pi part, ML-2020, plugs in
+  next to the USB-C socket; the setup script turns on its charging). Without it, and without Wi-Fi, the clock
+  can be wrong after power-off: everything also records **engine hours**, which are always right.
+- Saved in the hour meter's data folder (`~/bobcat-dash-data`): `events.json` and `service.json`.
+- **Pod fan:** the Pi switches the button pod's exhaust fan (breakout board rev 2.9, GPIO 11): on when its CPU reaches
+  **55 °C**, off again below **48 °C**, and on during key-off shutdown. Shown on the SYSTEM screen; `[fan]` in `config.toml`.
+
+## Service Wi-Fi, web page and USB stick
+
+**Service Wi-Fi** (no extra button: SYSTEM screen > **OK** > **OK**, engine off, then the **maintenance code**).
+The Pi turns on its own Wi-Fi network and a small web site. The pop-up shows the network name (**SSOMS-BOBCAT-M700**),
+its password, a QR code to scan with a phone camera, and the address to open (**http://10.42.0.1**). The menu
+bar shows `WI-FI 27m` while it's on. It stays on for **30 minutes**. **Extend 30 min** on the web page's Status
+adds more, as often as you like. It turns off when the time runs out, at key-off, from the web page, or with OK
+on the same pop-up. Afterwards the Pi goes back to your normal Wi-Fi by itself. The Wi-Fi password is made up the
+first time and then kept, so a phone that joined once joins again by itself. Settings: `[service_mode]` in `config.toml`.
+
+**Maintenance code.** These ask for a 4-digit code, entered with the buttons (◀ ▶ change the digit, OK = next
+digit, BACK = previous):
+- turning the service Wi-Fi on
+- installing software from a USB stick
+- clearing alarms (CLEAR THIS / CLEAR ALL)
+- marking service done
+
+Once entered it stays good, and the menu bar shows **UNLOCKED**, until the engine starts or the key goes off.
+
+There's no code out of the box: the first time, the dash asks you to make one up and enter it twice. It can't be
+all one digit (1111) or a run up or down (1234, 4321, 7890). Only a scrambled (salted hash) copy is kept, never the
+code itself. Three wrong codes in a row lock it for 5 minutes, then 10, 20 and so on, up to 2 hours, even across a
+restart. Every wrong code goes into the alarm history as **MAINTENANCE CODE**.
+
+**Forgot the code?**
+1. When you make the code, the dash shows an 8-digit **recovery code** once: write it down and keep it with the
+   machine's papers. On the code screen, arrow the first digit to **?** and press OK, enter the recovery code,
+   then make a new code (you get a new recovery code too).
+2. Lost that too? Take the SD card out of the Pi, put it in any computer, and on its boot drive (the small one
+   Windows or macOS can open) make an empty file called `reset-code`. Put the card back: at start-up the dash
+   forgets the code, deletes the file, and notes it in the alarm history. (With a keyboard or ssh on the Pi:
+   `python3 dash.py --reset-code`.)
+
+| Page | Shows |
+|---|---|
+| **Status** | Live gauges, warnings on now, service due, Pi temperature and fan. Updates every 2 s. |
+| **Reports** | The Alarms card opens the alarm list. For 7 days, 30 days, 12 months or all time: engine time split into **full throttle** (normal working), **idle** (warm-up, cool-down), **part throttle** (for warming a cold engine, pump priming or setting timing: flagged amber above 10 %) and **overspeed**, time at each engine speed, engine time by day, key-on time vs engine time, starts and cranks that didn't start, **hot shutdowns** (shut off before the cool-down finished), alarms by type, hottest box and outside temperatures, battery range while running, and a day-by-day table (10 days a page by default, or 20 / 50 / 100; Newer / Older). |
+| **Alarms** | The history list and the archive. |
+| **Service** | Each item: interval, last done, hours left, the job; everything marked done. |
+| **Downloads** | Everything as one zip, or each file: `report.html`, CSV files (open in Excel), settings, the dash's data (a backup) and log. |
+| **Software** | Upload an update zip (GitHub: **Code > Download ZIP**). The dash checks it, then **Install** (engine off, and the **maintenance code**: Install, going back and Restart dash all ask for it each time; wrong codes count toward the same lock and are logged with the device). Your `config.toml` and splash pictures are kept, the running version is kept as the **previous version** (one button to go back), and the dash restarts. The new default settings are saved beside yours as `config.toml.new`. |
+
+The usage numbers start when this software is installed (`usage.json` in the data folder). The bands are set
+in `[usage]`: idle below 1400 rpm, full throttle from 2600 rpm, overspeed above the tach's amber limit.
+
+**USB stick** (FAT32 or exFAT, in the pod's USB socket, engine off). The dash notices the stick by itself, so
+there's no script to run. It copies the same files as the web page's zip to `SSOMS-BOBCAT-M700/<date>_<hours>h/` on
+the stick. If the stick's top folder holds a zip whose name starts with `bobcat-dash` (GitHub's download is
+`bobcat-dash-main.zip`), the dash checks it and asks **INSTALL version x.y.z?** (OK = install after the maintenance code, BACK = no).
+Then it unmounts the stick and says when it's safe to pull out. It copies once per plug-in.
+
+Updating from a zip leaves the folder no longer a git checkout (`git clone` afresh if you want git back).
+If an update changes anything in `tools/`, run `sudo bash tools/setup-pi.sh` again. The setup script
+installs the two small helpers the dash uses for this (`bobcat-dash-wifi`, `bobcat-dash-usb`) and allows only
+those in sudoers. The hotspot needs the Wi-Fi country set (Raspberry Pi Imager does it, or `sudo raspi-config`).
+In the simulator the web page is at http://localhost:8080. The USB stick is a folder: create
+`~/bobcat-dash-data/simulator/usb-stick` to plug it in, and delete it to pull it out.
+
 ## Calibrating
 
 Run `python3 dash.py --calibrate` (stop the service first with `sudo systemctl stop bobcat-dash`).
@@ -853,7 +942,7 @@ python3 dash.py --sim --windowed
 | Left / Right | roll the machine 3° (Right = right side down) |
 | , / . / 0 | pitch 3° nose down / nose up; 0 = back to level |
 | - | unplug / replug the tilt sensor: NO SIGNAL, then a second's re-averaging when it's back |
-| = | breakout box temperature: normal / warm (BOX HOT, amber) / hot (red) / sensor missing |
+| = | electronics box (E-BOX) temperature: normal / warm (E-BOX HOT, amber) / hot (red) / sensor missing |
 | J | light display: big tiles / small icons |
 | 7 | front light switch on / off |
 | 8 / 9 | the 3-position back switch: rear lights / work light (pressing the other one switches over, pressing the same one again = middle, off) |
@@ -882,14 +971,19 @@ another optocoupler. The bottom row resizes to fit. All four ADS1115 inputs are 
 - `pihealth.py`: Pi temperature and 5 V supply warnings
 - `starter.py`: starter rest reminder and cooling countdown
 - `tilt.py`: machine angle: sensor reader, gyro/accelerometer blending, limits, `--zero-tilt`
-- `temps.py`: box and probe temperatures (DS18B20, 1-Wire), BOX HOT limits, `--temps`
+- `temps.py`: box and probe temperatures (DS18B20, 1-Wire), E-BOX HOT limits, `--temps`
 - `tools/bobcat-dash-poweroff`: last-step shutdown hook that tells the board to cut the power
 - `tools/bobcat-dash-keywatch` (+ `.service`): backstop that powers off 30 s after key-off if the dash isn't running
 - `tools/setup-pi.sh`: one-command setup of a fresh Raspberry Pi OS Lite card
-- `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff`
+- `tools/bobcat-dash-sudoers`: lets the dash run `systemctl poweroff` and the two helpers below
+- `tools/bobcat-dash-wifi`, `tools/bobcat-dash-usb`, `tools/bobcat-dash-reset-code`: switch the service Wi-Fi hotspot; mount the USB stick; delete the SD card's reset-code file
 - `tools/fit_splash.py`: fits your picture to the screen for the boot splash
 - `splash/`: the boot splash picture `splash.png` (1024×768), versions for 800×480 and 1280×720 displays, and the original logo
 - `audio.py`: startup chime, alert tones, horn output, silence button
+- `screens.py`, `buttons.py`, `events.py`, `service.py`, `fan.py`: the menu screens, the 4 buttons, alarm history, service reminders, the pod fan
+- `usage.py`: usage recording for the reports; `report.py`: reports, CSV files, the export zip
+- `maintcode.py`: the maintenance code (hash, lockout, `--reset-code`)
+- `servicemode.py`, `web.py`: service Wi-Fi and its web page; `usb.py`: USB stick copy and updates; `updater.py`: install / go back
 - `sounds/`: `startup.wav`, `alarm.wav`, `warning.wav`, `nosignal.wav`, `keyoff.wav`
 - `tools/make_sounds.py`: regenerates the sounds (needs numpy)
 - `config.toml`: pins, calibration, thresholds
